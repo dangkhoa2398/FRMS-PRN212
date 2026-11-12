@@ -64,8 +64,9 @@
                         <TextBlock Text="{Binding EmployeeWorkspace.Role}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,18,0">
-                        <TextBlock Text="Assigned Facility ID" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityId}" FontSize="13" Foreground="#0F172A" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="Assigned facility" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityName}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityId}" FontSize="11" Foreground="#94A3B8" Margin="0,5,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </UniformGrid>
             </StackPanel>
