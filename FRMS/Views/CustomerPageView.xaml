@@ -213,8 +213,8 @@
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
                                     <TextBlock Text="Storage Size" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding StorageSize, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="38" Padding="10,7" Margin="0,7,0,0"/>
+                                    <ComboBox IsEditable="True" Text="{Binding StorageSize, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
                                     <TextBlock Text="Check-in Month" Style="{StaticResource Subtle}"/>
