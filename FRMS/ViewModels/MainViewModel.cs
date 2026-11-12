@@ -101,7 +101,36 @@ public sealed class MainViewModel : ObservableObject
     private async Task FindStorageAsync()
     {
         if (!IsAuthenticated || !CurrentPage.IsStorage) return;
-        await LoadPageAsync("storage", true, CurrentPage.Search);
+        var page = CurrentPage;
+        if (page.StartMonth.HasValue != page.EndMonth.HasValue)
+        {
+            page.Message = "Select both check-in and check-out months, or leave both blank.";
+            return;
+        }
+        if (page.StartMonth.HasValue)
+        {
+            var start = new DateTime(page.StartMonth.Value.Year, page.StartMonth.Value.Month, 1);
+            var end = new DateTime(page.EndMonth!.Value.Year, page.EndMonth.Value.Month, 1);
+            var nextMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1);
+            if (start < nextMonth || end < start)
+            {
+                page.Message = "Check-in must be after this month and check-out cannot precede check-in.";
+                return;
+            }
+        }
+        var values = new List<string> { "page=1", "pageSize=20" };
+        if (!string.IsNullOrWhiteSpace(page.FacilityQuery))
+            values.Add("location=" + Uri.EscapeDataString(page.FacilityQuery.Trim()));
+        if (page.StorageMode is "PRIVATE" or "PUBLIC")
+            values.Add("mode=" + Uri.EscapeDataString(page.StorageMode));
+        if (!string.IsNullOrWhiteSpace(page.StorageSize))
+            values.Add("size=" + Uri.EscapeDataString(page.StorageSize.Trim()));
+        if (page.StartMonth.HasValue)
+        {
+            values.Add("startMonth=" + page.StartMonth.Value.ToString("yyyy-MM", CultureInfo.InvariantCulture));
+            values.Add("endMonth=" + page.EndMonth!.Value.ToString("yyyy-MM", CultureInfo.InvariantCulture));
+        }
+        await LoadPageAsync("storage", true, string.Join("&", values), page);
     }
 
     private async Task OpenContractAsync(CustomerRecord? record)
@@ -140,7 +169,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private async Task LoadPageAsync(string route, bool runStorageSearch, string? storageQuery = null)
+    private async Task LoadPageAsync(string route, bool runStorageSearch, string? storageQuery = null, CustomerPageViewModel? existingPage = null)
     {
         if (!IsAuthenticated) return;
         _currentRoute = route;
@@ -152,14 +181,13 @@ public sealed class MainViewModel : ObservableObject
             "contracts" => ("My Contracts", "Your rental units and visits", "api/v1/contracts?page=1&pageSize=20"),
             "invoices" => ("Invoices", "Billing and payment information", "api/v1/invoices?page=1&pageSize=20"),
             "support" => ("Support Requests", "Your requests and assigned support", "api/v1/support-tickets?page=1&pageSize=20"),
-            "account" => ("Account Settings", "Your profile information", "api/v1/auth/me"),
             _ => ("Home", "Your account overview", "api/v1/auth/me")
         };
 
         _navigationCts?.Cancel();
         var cts = new CancellationTokenSource();
         _navigationCts = cts;
-        var page = new CustomerPageViewModel(route, title, description);
+        var page = existingPage ?? new CustomerPageViewModel(route, title, description);
         if (route == "contracts" && !string.IsNullOrEmpty(_pendingContractId))
         {
             page.ContractFilter = _pendingContractId;
@@ -169,8 +197,10 @@ public sealed class MainViewModel : ObservableObject
         }
         if (route == "storage" && runStorageSearch)
         {
-            page.Search = storageQuery ?? "";
+            path = "api/v1/facilities?" + (storageQuery ?? "page=1&pageSize=20");
             page.HasSearched = true;
+            page.Search = "";
+            page.SetRecords(Array.Empty<CustomerRecord>());
         }
         CurrentPage = page;
         if (route == "storage" && !runStorageSearch)
@@ -202,7 +232,7 @@ public sealed class MainViewModel : ObservableObject
             else if (items.ValueKind == JsonValueKind.Object)
                 records.Add(ToRecord(items, route));
 
-            if (route == "home" || route == "account")
+            if (route == "home")
             {
                 var profile = Property(data, "profile");
                 var name = Field(profile, "fullName", "name");
@@ -280,7 +310,7 @@ public sealed class MainViewModel : ObservableObject
         string status = Field(element, "status", "paymentStatus");
         return route switch
         {
-            "home" or "account" => new CustomerRecord
+            "home" => new CustomerRecord
             {
                 Title = !string.IsNullOrWhiteSpace(fullName) ? fullName : "Customer profile",
                 Subtitle = Field(element, "email"),
