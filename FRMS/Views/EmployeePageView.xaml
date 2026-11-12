@@ -12,7 +12,7 @@
         </Style>
     </UserControl.Resources>
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid Margin="0,0,0,18">
             <StackPanel>
                 <TextBlock Text="{Binding EmployeeWorkspace.Title}" FontSize="28" FontWeight="Bold" Foreground="#0F172A"/>
@@ -35,7 +35,55 @@
             </ProgressBar>
             <TextBlock Text="{Binding EmployeeWorkspace.Message}" Foreground="#64748B" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-        <Border Grid.Row="2" Style="{StaticResource Panel}">
+        <Border Grid.Row="2" Padding="14">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource Panel}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EmployeeWorkspace.ShowFilters}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="175"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Text="Status" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <ComboBox Height="36" ItemsSource="{Binding EmployeeWorkspace.StatusOptions}"
+                              SelectedItem="{Binding EmployeeWorkspace.SelectedStatus}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                    <TextBlock Text="Type / Category" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <ComboBox Height="36" ItemsSource="{Binding EmployeeWorkspace.CategoryOptions}"
+                              SelectedItem="{Binding EmployeeWorkspace.SelectedCategory}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                    <TextBlock Text="Search" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <TextBox Height="36" Padding="10,7" Text="{Binding EmployeeWorkspace.SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding EmployeeWorkspace.ShowDateFilter}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Visit date" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Border Grid.Row="3" Style="{StaticResource Panel}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding EmployeeWorkspace.Items}">
                     <ItemsControl.ItemTemplate>
