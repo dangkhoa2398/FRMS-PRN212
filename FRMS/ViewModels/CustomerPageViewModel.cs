@@ -42,7 +42,19 @@ public sealed class CustomerPageViewModel : ObservableObject
     public bool IsContracts => Route == "contracts";
     public bool IsInvoices => Route == "invoices";
     public bool IsSupport => Route == "support";
-    public bool IsAccount => Route == "account";
+
+    private string _facilityQuery = "";
+    public string FacilityQuery { get => _facilityQuery; set => SetProperty(ref _facilityQuery, value); }
+    private string _storageMode = "All";
+    public string StorageMode { get => _storageMode; set => SetProperty(ref _storageMode, value); }
+    public string[] StorageModes { get; } = { "All", "PRIVATE", "PUBLIC" };
+    private string _storageSize = "";
+    public string StorageSize { get => _storageSize; set => SetProperty(ref _storageSize, value); }
+    private DateTime? _startMonth;
+    public DateTime? StartMonth { get => _startMonth; set => SetProperty(ref _startMonth, value); }
+    private DateTime? _endMonth;
+    public DateTime? EndMonth { get => _endMonth; set => SetProperty(ref _endMonth, value); }
+
     private bool _hasSearched;
     public bool HasSearched { get => _hasSearched; set => SetProperty(ref _hasSearched, value); }
 
