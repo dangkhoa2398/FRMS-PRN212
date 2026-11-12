@@ -27,14 +27,15 @@ public sealed class CustomerApiService(HttpClient http)
         return (true, "");
     }
 
-    public async Task<JsonDocument> GetAsync(string path)
+    public async Task<JsonDocument> GetAsync(string path, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         if (!string.IsNullOrEmpty(_token))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-        using var response = await http.SendAsync(request);
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
     }
 
     public void Logout() => _token = null;
