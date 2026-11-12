@@ -250,6 +250,10 @@ public sealed class MainViewModel : ObservableObject
                 page.Message = records.Count == 0 ? "No matching records." : $"{page.VisibleRecords.Count} result(s) available.";
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+        catch (TaskCanceledException)
+        {
+            if (ReferenceEquals(CurrentPage, page)) page.Message = "The backend request timed out. Please retry.";
+        }
         catch (HttpRequestException ex)
         {
             if (ReferenceEquals(CurrentPage, page)) page.Message = $"Could not load data: {ex.Message}";
