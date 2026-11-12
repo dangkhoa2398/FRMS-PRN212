@@ -16,6 +16,10 @@ public sealed class CustomerRecord : ObservableObject
     public string Detail4 { get; init; } = "";
     public string Amount { get; init; } = "";
     public string Content { get; init; } = "";
+    public string UnitType { get; init; } = "";
+    public string UnitTypeId { get; init; } = "";
+    public string RelatedEntityId { get; init; } = "";
+    public string RelatedStorage { get; set; } = "";
     public string ContractId { get; init; } = "";
     public bool HasContract => Guid.TryParse(ContractId, out _);
     public bool CanCreateVisit => HasContract && Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase);
@@ -72,6 +76,9 @@ public sealed class CustomerPageViewModel : ObservableObject
 
     private string _search = "";
     public string Search { get => _search; set { if (SetProperty(ref _search, value)) ApplyFilter(); } }
+    private string _unitTypeFilter = "All";
+    public string UnitTypeFilter { get => _unitTypeFilter; set { if (SetProperty(ref _unitTypeFilter, value)) ApplyFilter(); } }
+    public ObservableCollection<string> UnitTypeOptions { get; } = new() { "All" };
     private string _contractFilter = "";
     public string ContractFilter { get => _contractFilter; set { if (SetProperty(ref _contractFilter, value)) ApplyFilter(); } }
     private string _selectedStatus = "All";
@@ -85,6 +92,11 @@ public sealed class CustomerPageViewModel : ObservableObject
     {
         Records.Clear();
         foreach (var record in data) Records.Add(record);
+        UnitTypeOptions.Clear();
+        UnitTypeOptions.Add("All");
+        if (IsReservations)
+            foreach (var type in Records.Select(x => x.UnitType).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x))
+                UnitTypeOptions.Add(type);
         ApplyFilter();
     }
 
@@ -92,6 +104,7 @@ public sealed class CustomerPageViewModel : ObservableObject
     {
         var query = Records.Where(x =>
             (SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
+            (!IsReservations || UnitTypeFilter == "All" || x.UnitType.Equals(UnitTypeFilter, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(ContractFilter) || x.ContractId.Equals(ContractFilter, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(Search) ||
              (x.Title + " " + x.Subtitle + " " + x.Status + " " + x.Detail1 + " " +
