@@ -163,6 +163,8 @@ public sealed class MainViewModel : ObservableObject
         if (route == "contracts" && !string.IsNullOrEmpty(_pendingContractId))
         {
             page.ContractFilter = _pendingContractId;
+            // Fetch the exact related contract; it may be outside the first list page.
+            path = $"api/v1/contracts/{_pendingContractId}";
             _pendingContractId = "";
         }
         if (route == "storage" && runStorageSearch)
@@ -209,7 +211,7 @@ public sealed class MainViewModel : ObservableObject
             page.SetRecords(records);
             if (route == "contracts" && !string.IsNullOrEmpty(page.ContractFilter))
                 page.Message = page.VisibleRecords.Count == 0
-                    ? "No matching contract was found in the returned results."
+                    ? "The related contract could not be found."
                     : "Showing the contract related to your support request.";
             else
                 page.Message = records.Count == 0 ? "No matching records." : $"{page.VisibleRecords.Count} result(s) available.";
