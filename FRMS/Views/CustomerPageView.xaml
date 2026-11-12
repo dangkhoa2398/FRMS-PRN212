@@ -199,14 +199,35 @@
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
-                            <TextBlock Text="Search for Storage" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Enter a facility name or location. Results load only when you select Find Storage." Style="{StaticResource Subtle}" Margin="0,8,0,15"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Height="42" Padding="12,9" Margin="0,0,12,0"/>
-                                <Button Grid.Column="1" Content="Find Storage" Style="{StaticResource PrimaryButton}"
+                            <TextBlock Text="Find available storage" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="Choose filters and click Find Storage. Results will not appear automatically." Style="{StaticResource Subtle}" Margin="0,8,0,16"/>
+                            <UniformGrid Columns="3">
+                                <StackPanel Margin="0,0,14,14">
+                                    <TextBlock Text="Facility / Location" Style="{StaticResource Subtle}"/>
+                                    <TextBox Text="{Binding FacilityQuery, UpdateSourceTrigger=PropertyChanged}" Height="38" Padding="10,7" Margin="0,7,0,0"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,14,14">
+                                    <TextBlock Text="Storage Type" Style="{StaticResource Subtle}"/>
+                                    <ComboBox ItemsSource="{Binding StorageModes}" SelectedItem="{Binding StorageMode}"
+                                              Height="38" Margin="0,7,0,0"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,14,14">
+                                    <TextBlock Text="Storage Size" Style="{StaticResource Subtle}"/>
+                                    <TextBox Text="{Binding StorageSize, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="38" Padding="10,7" Margin="0,7,0,0"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,14,14">
+                                    <TextBlock Text="Check-in Month" Style="{StaticResource Subtle}"/>
+                                    <DatePicker SelectedDate="{Binding StartMonth, Mode=TwoWay}" Height="38" Margin="0,7,0,0"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,14,14">
+                                    <TextBlock Text="Check-out Month" Style="{StaticResource Subtle}"/>
+                                    <DatePicker SelectedDate="{Binding EndMonth, Mode=TwoWay}" Height="38" Margin="0,7,0,0"/>
+                                </StackPanel>
+                            </UniformGrid>
+                            <Button Content="Find Storage" Style="{StaticResource PrimaryButton}"
+                                    HorizontalAlignment="Left" MinWidth="150"
                                     Command="{Binding DataContext.FindStorageCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                            </Grid>
                         </StackPanel>
                     </Border>
                     <StackPanel>
@@ -258,21 +279,6 @@
                     </ItemsControl>
                 </StackPanel>
 
-                <StackPanel>
-                    <StackPanel.Style><Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers><DataTrigger Binding="{Binding IsAccount}" Value="True">
-                            <Setter Property="Visibility" Value="Visible"/>
-                        </DataTrigger></Style.Triggers>
-                    </Style></StackPanel.Style>
-                    <Border Style="{StaticResource Panel}">
-                        <StackPanel>
-                            <TextBlock Text="Personal Information" Style="{StaticResource Heading}" Margin="0,0,0,12"/>
-                            <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
-                            <TextBlock Text="Profile changes are not available in this screen yet." Style="{StaticResource Subtle}"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
             </StackPanel>
         </ScrollViewer>
     </Grid>
