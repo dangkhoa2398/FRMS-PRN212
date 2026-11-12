@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -9,10 +11,11 @@ using FRMS.PRN212.WpfConnection.Services;
 
 namespace FRMS.PRN212.WpfConnection.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public sealed class MainViewModel : ObservableObject
 {
     private readonly CustomerApiService _api;
     private readonly IFrmsHealthService _health;
+    private CancellationTokenSource? _navigationCts;
     private string _currentRoute = "home";
 
     public MainViewModel(CustomerApiService api, IFrmsHealthService health)
@@ -38,7 +41,7 @@ public partial class MainViewModel : ObservableObject
     public string Status { get => _status; set => SetProperty(ref _status, value); }
     private string _details = "Check your backend database connection.";
     public string Details { get => _details; set => SetProperty(ref _details, value); }
-    private CustomerPageViewModel _currentPage = new("Home", "Customer account overview.");
+    private CustomerPageViewModel _currentPage = new("home", "Home", "Customer account overview.");
     public CustomerPageViewModel CurrentPage { get => _currentPage; set => SetProperty(ref _currentPage, value); }
 
     public IAsyncRelayCommand<PasswordBox> LoginCommand { get; }
@@ -56,7 +59,6 @@ public partial class MainViewModel : ObservableObject
             LoginError = "Enter your phone number and password.";
             return;
         }
-
         IsLoggingIn = true;
         try
         {
@@ -74,67 +76,132 @@ public partial class MainViewModel : ObservableObject
 
     private void Logout()
     {
+        _navigationCts?.Cancel();
         _api.Logout();
         PhoneNumber = "";
         LoginError = "";
         IsAuthenticated = false;
+        CurrentPage = new CustomerPageViewModel("home", "Home", "Customer account overview.");
     }
 
     private async Task NavigateAsync(string? route)
     {
         if (!IsAuthenticated) return;
         _currentRoute = route ?? "home";
-        (string title, string desc, string path) = _currentRoute switch
+        var (title, description, path) = _currentRoute switch
         {
-            "home" => ("Home", "Customer account overview", "api/v1/auth/me"),
-            "storage" => ("Find Storage", "Browse available storage facilities", "api/v1/facilities?page=1&pageSize=20"),
-            "reservations" => ("My Reservations", "Your storage reservations", "api/v1/reservations?page=1&pageSize=20"),
-            "contracts" => ("My Contracts", "Your current and past rental contracts", "api/v1/contracts?page=1&pageSize=20"),
-            "invoices" => ("Invoices", "Your invoices and payment status", "api/v1/invoices?page=1&pageSize=20"),
-            "support" => ("Support", "Customer support tickets", "api/v1/support-tickets?page=1&pageSize=20"),
-            "account" => ("Account Settings", "Your profile", "api/v1/auth/me"),
-            _ => ("Home", "Customer account overview", "api/v1/auth/me")
+            "home" => ("Home", "Customer information and account overview", "api/v1/auth/me"),
+            "storage" => ("Find Storage", "Browse facilities and find storage space", "api/v1/facilities?page=1&pageSize=20"),
+            "reservations" => ("My Reservations", "Track storage bookings and handover status", "api/v1/reservations?page=1&pageSize=20"),
+            "contracts" => ("My Contracts", "Manage your rental contracts", "api/v1/contracts?page=1&pageSize=20"),
+            "invoices" => ("Invoices", "Track rental invoices and payments", "api/v1/invoices?page=1&pageSize=20"),
+            "support" => ("Support Requests", "Your customer support tickets", "api/v1/support-tickets?page=1&pageSize=20"),
+            "account" => ("Account Settings", "Your profile information", "api/v1/auth/me"),
+            _ => ("Home", "Customer information and account overview", "api/v1/auth/me")
         };
-        var page = new CustomerPageViewModel(title, desc);
+
+        // Cancel previous HTTP navigation; a stale response must not replace the selected page.
+        _navigationCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _navigationCts = cts;
+        var page = new CustomerPageViewModel(_currentRoute, title, description);
         CurrentPage = page;
         page.IsLoading = true;
+
         try
         {
-            using var json = await _api.GetAsync(path);
-            if (CurrentPage != page) return;
+            using var json = await _api.GetAsync(path, cts.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(CurrentPage, page) || !IsAuthenticated)
+                return;
             var root = json.RootElement;
             var data = root.TryGetProperty("data", out var d) ? d : root;
-            JsonElement array = data;
-            if (data.ValueKind == JsonValueKind.Object &&
-                data.TryGetProperty("items", out var items)) array = items;
-            if (array.ValueKind == JsonValueKind.Array)
+            var items = data;
+            if (data.ValueKind == JsonValueKind.Object)
             {
-                foreach (var item in array.EnumerateArray())
-                    page.Items.Add(Describe(item));
-                page.Message = page.Items.Count == 0 ? "No records found." : $"{page.Items.Count} records loaded.";
+                if (data.TryGetProperty("items", out var i)) items = i;
+                else if (data.TryGetProperty("data", out var inner)) items = inner;
             }
-            else
+
+            var records = new List<CustomerRecord>();
+            if (items.ValueKind == JsonValueKind.Array)
             {
-                page.Items.Add(Describe(data));
-                page.Message = "Loaded from FRMS API.";
+                foreach (var item in items.EnumerateArray())
+                    records.Add(ToRecord(item, _currentRoute));
             }
+            else if (items.ValueKind == JsonValueKind.Object)
+            {
+                records.Add(ToRecord(items, _currentRoute));
+            }
+            page.SetRecords(records);
+            page.Message = records.Count == 0 ? "No data returned for this page." :
+                $"{records.Count} record(s) loaded from the backend.";
         }
-        catch (HttpRequestException ex) { page.Message = $"API error: {ex.Message}"; }
-        catch (JsonException) { page.Message = "Could not parse the API response."; }
-        finally { page.IsLoading = false; }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+        catch (HttpRequestException ex)
+        {
+            if (ReferenceEquals(CurrentPage, page))
+                page.Message = $"Could not load this page: {ex.Message}";
+        }
+        catch (JsonException)
+        {
+            if (ReferenceEquals(CurrentPage, page))
+                page.Message = "The API returned an unexpected JSON response.";
+        }
+        finally
+        {
+            if (ReferenceEquals(CurrentPage, page))
+                page.IsLoading = false;
+            if (ReferenceEquals(_navigationCts, cts))
+                _navigationCts = null;
+            cts.Dispose();
+        }
     }
 
-    private static string Describe(JsonElement item)
+    private static CustomerRecord ToRecord(JsonElement element, string route)
     {
-        if (item.ValueKind != JsonValueKind.Object) return item.ToString();
-        var parts = new System.Collections.Generic.List<string>();
-        foreach (var prop in item.EnumerateObject())
+        static string Field(JsonElement obj, params string[] names)
         {
-            if (prop.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False)
-                parts.Add($"{prop.Name}: {prop.Value}");
-            if (parts.Count >= 7) break;
+            if (obj.ValueKind != JsonValueKind.Object) return "";
+            foreach (var name in names)
+                if (obj.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null)
+                    return value.ValueKind is JsonValueKind.Object or JsonValueKind.Array ? "" : value.ToString();
+            return "";
         }
-        return parts.Count == 0 ? "Record available (see API for details)" : string.Join("   |   ", parts);
+        string title = route switch
+        {
+            "storage" => Field(element, "name", "facilityName", "unitTypeName"),
+            "reservations" => Field(element, "unitTypeName", "facilityName", "reservationId"),
+            "contracts" => Field(element, "unitTypeName", "storageUnitCode", "contractId"),
+            "invoices" => Field(element, "invoiceNumber", "invoiceCode", "invoiceId"),
+            "support" => Field(element, "title", "subject", "ticketId"),
+            _ => Field(element, "fullName", "name", "phoneNumber", "userAccountId")
+        };
+        string subtitle = route switch
+        {
+            "storage" => Field(element, "address", "location"),
+            "reservations" => Field(element, "facilityName", "reservationId"),
+            "contracts" => Field(element, "facilityName", "contractId"),
+            "invoices" => Field(element, "contractId", "invoiceId"),
+            "support" => Field(element, "ticketId", "description"),
+            _ => Field(element, "email", "phoneNumber", "role")
+        };
+        var fields = new List<string>();
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number
+                or JsonValueKind.True or JsonValueKind.False)
+                fields.Add($"{property.Name}: {property.Value}");
+        }
+        return new CustomerRecord
+        {
+            Title = string.IsNullOrWhiteSpace(title) ? "FRMS record" : title,
+            Subtitle = subtitle,
+            Status = Field(element, "status", "paymentStatus"),
+            Detail1 = fields.Count > 0 ? fields[0] : "",
+            Detail2 = fields.Count > 1 ? fields[1] : "",
+            Detail3 = fields.Count > 2 ? fields[2] : "",
+            Detail4 = fields.Count > 3 ? fields[3] : ""
+        };
     }
 
     private Task RefreshAsync() => NavigateAsync(_currentRoute);
