@@ -1,0 +1,41 @@
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+
+namespace FRMS.PRN212.WpfConnection.Services;
+
+public sealed class CustomerApiService(HttpClient http)
+{
+    private string? _token;
+
+    public async Task<(bool Success, string Error)> LoginAsync(string phoneNumber, string password)
+    {
+        using var response = await http.PostAsJsonAsync("api/v1/auth/customer/login",
+            new { phoneNumber, password });
+        if (!response.IsSuccessStatusCode)
+            return (false, $"Login failed (HTTP {(int)response.StatusCode}). Check your credentials or account status.");
+        using var payload = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        if (!payload.RootElement.TryGetProperty("data", out var data)
+            || !data.TryGetProperty("accessToken", out var access)
+            || string.IsNullOrWhiteSpace(access.GetString())
+            || !data.TryGetProperty("user", out var user)
+            || !user.TryGetProperty("role", out var role)
+            || role.GetString() != "CUSTOMER")
+            return (false, "Invalid token response or account is not a Customer.");
+        _token = access.GetString();
+        return (true, "");
+    }
+
+    public async Task<JsonDocument> GetAsync(string path)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (!string.IsNullOrEmpty(_token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        using var response = await http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+    }
+
+    public void Logout() => _token = null;
+}
