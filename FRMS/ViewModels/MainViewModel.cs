@@ -24,6 +24,7 @@ public sealed class MainViewModel : ObservableObject
     {
         _api = api;
         _health = health;
+        EmployeeWorkspace = new EmployeeWorkspaceViewModel(api);
         LoginCommand = new AsyncRelayCommand<PasswordBox>(LoginAsync);
         LogoutCommand = new RelayCommand(Logout);
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
@@ -33,6 +34,17 @@ public sealed class MainViewModel : ObservableObject
         CreateVisitCommand = new AsyncRelayCommand<CustomerRecord>(CreateVisitAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
+
+    public EmployeeWorkspaceViewModel EmployeeWorkspace { get; }
+
+    private string _loginMode = "Customer";
+    public string LoginMode { get => _loginMode; set => SetProperty(ref _loginMode, value); }
+    public string[] LoginModes { get; } = { "Customer", "Staff / Manager" };
+    private string _employeeEmail = "";
+    public string EmployeeEmail { get => _employeeEmail; set => SetProperty(ref _employeeEmail, value); }
+    private string _employeeRole = "";
+    public string EmployeeRole { get => _employeeRole; private set => SetProperty(ref _employeeRole, value); }
+    public bool IsEmployee => !string.IsNullOrWhiteSpace(EmployeeRole);
 
     private string _phoneNumber = "";
     public string PhoneNumber { get => _phoneNumber; set => SetProperty(ref _phoneNumber, value); }
@@ -64,19 +76,35 @@ public sealed class MainViewModel : ObservableObject
     {
         if (IsLoggingIn || passwordBox is null) return;
         LoginError = "";
-        if (string.IsNullOrWhiteSpace(PhoneNumber) || passwordBox.Password.Length == 0)
+        var isEmployeeLogin = LoginMode == "Staff / Manager";
+        if (string.IsNullOrWhiteSpace(isEmployeeLogin ? EmployeeEmail : PhoneNumber) || passwordBox.Password.Length == 0)
         {
-            LoginError = "Enter your phone number and password.";
+            LoginError = isEmployeeLogin ? "Enter your employee email and password." : "Enter your phone number and password.";
             return;
         }
         IsLoggingIn = true;
         try
         {
-            var (success, error) = await _api.LoginAsync(PhoneNumber.Trim(), passwordBox.Password);
-            if (!success) { LoginError = error; return; }
-            passwordBox.Clear();
-            IsAuthenticated = true;
-            await NavigateAsync("home");
+            if (isEmployeeLogin)
+            {
+                var (success, error, role) = await _api.LoginEmployeeAsync(EmployeeEmail.Trim(), passwordBox.Password);
+                if (!success) { LoginError = error; return; }
+                EmployeeRole = role;
+                OnPropertyChanged(nameof(IsEmployee));
+                passwordBox.Clear();
+                IsAuthenticated = true;
+                await EmployeeWorkspace.InitializeAsync(role);
+            }
+            else
+            {
+                var (success, error) = await _api.LoginAsync(PhoneNumber.Trim(), passwordBox.Password);
+                if (!success) { LoginError = error; return; }
+                passwordBox.Clear();
+                EmployeeRole = "";
+                OnPropertyChanged(nameof(IsEmployee));
+                IsAuthenticated = true;
+                await NavigateAsync("home");
+            }
         }
         catch (HttpRequestException ex) { LoginError = $"Backend connection failed: {ex.Message}"; }
         catch (TaskCanceledException) { LoginError = "Login request timed out."; }
@@ -88,6 +116,10 @@ public sealed class MainViewModel : ObservableObject
     {
         _navigationCts?.Cancel();
         _api.Logout();
+        EmployeeWorkspace.Reset();
+        EmployeeRole = "";
+        OnPropertyChanged(nameof(IsEmployee));
+        EmployeeEmail = "";
         PhoneNumber = "";
         CustomerName = "Customer";
         _pendingContractId = "";
