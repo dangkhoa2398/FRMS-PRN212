@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -17,6 +18,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly IFrmsHealthService _health;
     private CancellationTokenSource? _navigationCts;
     private string _currentRoute = "home";
+    private string _pendingContractId = "";
 
     public MainViewModel(CustomerApiService api, IFrmsHealthService health)
     {
@@ -26,6 +28,9 @@ public sealed class MainViewModel : ObservableObject
         LogoutCommand = new RelayCommand(Logout);
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        FindStorageCommand = new AsyncRelayCommand(FindStorageAsync);
+        OpenContractCommand = new AsyncRelayCommand<CustomerRecord>(OpenContractAsync);
+        CreateVisitCommand = new AsyncRelayCommand<CustomerRecord>(CreateVisitAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
 
@@ -41,6 +46,8 @@ public sealed class MainViewModel : ObservableObject
     public string Status { get => _status; set => SetProperty(ref _status, value); }
     private string _details = "Check your backend database connection.";
     public string Details { get => _details; set => SetProperty(ref _details, value); }
+    private string _customerName = "Customer";
+    public string CustomerName { get => _customerName; set => SetProperty(ref _customerName, value); }
     private CustomerPageViewModel _currentPage = new("home", "Home", "Customer account overview.");
     public CustomerPageViewModel CurrentPage { get => _currentPage; set => SetProperty(ref _currentPage, value); }
 
@@ -48,6 +55,9 @@ public sealed class MainViewModel : ObservableObject
     public IRelayCommand LogoutCommand { get; }
     public IAsyncRelayCommand<string> NavigateCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
+    public IAsyncRelayCommand FindStorageCommand { get; }
+    public IAsyncRelayCommand<CustomerRecord> OpenContractCommand { get; }
+    public IAsyncRelayCommand<CustomerRecord> CreateVisitCommand { get; }
     public IAsyncRelayCommand CheckConnectionCommand { get; }
 
     private async Task LoginAsync(PasswordBox? passwordBox)
@@ -79,135 +89,261 @@ public sealed class MainViewModel : ObservableObject
         _navigationCts?.Cancel();
         _api.Logout();
         PhoneNumber = "";
+        CustomerName = "Customer";
+        _pendingContractId = "";
         LoginError = "";
         IsAuthenticated = false;
         CurrentPage = new CustomerPageViewModel("home", "Home", "Customer account overview.");
     }
 
-    private async Task NavigateAsync(string? route)
+    private Task NavigateAsync(string? route) => LoadPageAsync(route ?? "home", false);
+
+    private async Task FindStorageAsync()
+    {
+        if (!IsAuthenticated || !CurrentPage.IsStorage) return;
+        await LoadPageAsync("storage", true, CurrentPage.Search);
+    }
+
+    private async Task OpenContractAsync(CustomerRecord? record)
+    {
+        if (record is null || !record.HasContract || !IsAuthenticated) return;
+        _pendingContractId = record.ContractId;
+        await LoadPageAsync("contracts", false);
+    }
+
+    private async Task CreateVisitAsync(CustomerRecord? record)
+    {
+        if (record is null || !record.CanCreateVisit || record.VisitDate is null || !IsAuthenticated) return;
+        if (!Guid.TryParse(record.ContractId, out var contractId)) return;
+        if (record.VisitDate.Value.Date < DateTime.Today)
+        {
+            CurrentPage.Message = "Please select today or a future visit date.";
+            return;
+        }
+        var page = CurrentPage;
+        page.Message = "Creating your access visit...";
+        try
+        {
+            await _api.CreateAccessVisitAsync(contractId, record.VisitDate.Value.Date);
+            if (ReferenceEquals(CurrentPage, page))
+                page.Message = "Access visit created successfully.";
+        }
+        catch (HttpRequestException ex)
+        {
+            if (ReferenceEquals(CurrentPage, page))
+                page.Message = $"Visit could not be created: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            if (ReferenceEquals(CurrentPage, page))
+                page.Message = "Visit request timed out.";
+        }
+    }
+
+    private async Task LoadPageAsync(string route, bool runStorageSearch, string? storageQuery = null)
     {
         if (!IsAuthenticated) return;
-        _currentRoute = route ?? "home";
-        var selectedRoute = _currentRoute;
-        var (title, description, path) = selectedRoute switch
+        _currentRoute = route;
+        var (title, description, path) = route switch
         {
-            "home" => ("Home", "Customer information and account overview", "api/v1/auth/me"),
-            "storage" => ("Find Storage", "Browse facilities and find storage space", "api/v1/facilities?page=1&pageSize=20"),
-            "reservations" => ("My Reservations", "Track storage bookings and handover status", "api/v1/reservations?page=1&pageSize=20"),
-            "contracts" => ("My Contracts", "Manage your rental contracts", "api/v1/contracts?page=1&pageSize=20"),
-            "invoices" => ("Invoices", "Track rental invoices and payments", "api/v1/invoices?page=1&pageSize=20"),
-            "support" => ("Support Requests", "Your customer support tickets", "api/v1/support-tickets?page=1&pageSize=20"),
+            "home" => ("Home", "Your account overview", "api/v1/auth/me"),
+            "storage" => ("Find Storage", "Search facilities and available storage space", "api/v1/facilities?page=1&pageSize=20"),
+            "reservations" => ("My Reservations", "Your bookings and handover status", "api/v1/reservations?page=1&pageSize=20"),
+            "contracts" => ("My Contracts", "Your rental units and visits", "api/v1/contracts?page=1&pageSize=20"),
+            "invoices" => ("Invoices", "Billing and payment information", "api/v1/invoices?page=1&pageSize=20"),
+            "support" => ("Support Requests", "Your requests and assigned support", "api/v1/support-tickets?page=1&pageSize=20"),
             "account" => ("Account Settings", "Your profile information", "api/v1/auth/me"),
-            _ => ("Home", "Customer information and account overview", "api/v1/auth/me")
+            _ => ("Home", "Your account overview", "api/v1/auth/me")
         };
 
-        // Cancel previous HTTP navigation; a stale response must not replace the selected page.
         _navigationCts?.Cancel();
         var cts = new CancellationTokenSource();
         _navigationCts = cts;
-        var page = new CustomerPageViewModel(selectedRoute, title, description);
+        var page = new CustomerPageViewModel(route, title, description);
+        if (route == "contracts" && !string.IsNullOrEmpty(_pendingContractId))
+        {
+            page.ContractFilter = _pendingContractId;
+            _pendingContractId = "";
+        }
+        if (route == "storage" && runStorageSearch)
+        {
+            page.Search = storageQuery ?? "";
+            page.HasSearched = true;
+        }
         CurrentPage = page;
-        page.IsLoading = true;
+        if (route == "storage" && !runStorageSearch)
+        {
+            page.Message = "Enter a facility or location, then click Find Storage.";
+            if (ReferenceEquals(_navigationCts, cts)) _navigationCts = null;
+            cts.Dispose();
+            return;
+        }
 
+        page.IsLoading = true;
         try
         {
             using var json = await _api.GetAsync(path, cts.Token);
-            if (cts.IsCancellationRequested || !ReferenceEquals(CurrentPage, page) || !IsAuthenticated)
-                return;
+            if (cts.IsCancellationRequested || !ReferenceEquals(CurrentPage, page) || !IsAuthenticated) return;
             var root = json.RootElement;
-            var data = root.TryGetProperty("data", out var d) ? d : root;
+            var data = Property(root, "data");
+            if (data.ValueKind == JsonValueKind.Undefined) data = root;
             var items = data;
             if (data.ValueKind == JsonValueKind.Object)
             {
-                if (data.TryGetProperty("items", out var i)) items = i;
-                else if (data.TryGetProperty("data", out var inner)) items = inner;
+                var nested = Property(data, "items", "data");
+                if (nested.ValueKind != JsonValueKind.Undefined) items = nested;
             }
 
             var records = new List<CustomerRecord>();
             if (items.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in items.EnumerateArray())
-                    records.Add(ToRecord(item, selectedRoute));
-            }
+                foreach (var item in items.EnumerateArray()) records.Add(ToRecord(item, route));
             else if (items.ValueKind == JsonValueKind.Object)
+                records.Add(ToRecord(items, route));
+
+            if (route == "home" || route == "account")
             {
-                records.Add(ToRecord(items, selectedRoute));
+                var profile = Property(data, "profile");
+                var name = Field(profile, "fullName", "name");
+                if (!string.IsNullOrWhiteSpace(name)) CustomerName = name;
             }
             page.SetRecords(records);
-            page.Message = records.Count == 0 ? "No data returned for this page." :
-                $"{records.Count} record(s) loaded from the backend.";
+            if (route == "contracts" && !string.IsNullOrEmpty(page.ContractFilter))
+                page.Message = page.VisibleRecords.Count == 0
+                    ? "No matching contract was found in the returned results."
+                    : "Showing the contract related to your support request.";
+            else
+                page.Message = records.Count == 0 ? "No matching records." : $"{page.VisibleRecords.Count} result(s) available.";
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
         catch (HttpRequestException ex)
         {
-            if (ReferenceEquals(CurrentPage, page))
-                page.Message = $"Could not load this page: {ex.Message}";
+            if (ReferenceEquals(CurrentPage, page)) page.Message = $"Could not load data: {ex.Message}";
         }
         catch (JsonException)
         {
-            if (ReferenceEquals(CurrentPage, page))
-                page.Message = "The API returned an unexpected JSON response.";
+            if (ReferenceEquals(CurrentPage, page)) page.Message = "The backend returned invalid JSON.";
         }
         finally
         {
-            if (ReferenceEquals(CurrentPage, page))
-                page.IsLoading = false;
-            if (ReferenceEquals(_navigationCts, cts))
-                _navigationCts = null;
+            if (ReferenceEquals(CurrentPage, page)) page.IsLoading = false;
+            if (ReferenceEquals(_navigationCts, cts)) _navigationCts = null;
             cts.Dispose();
         }
     }
 
+    private static JsonElement Property(JsonElement obj, params string[] names)
+    {
+        if (obj.ValueKind != JsonValueKind.Object) return default;
+        foreach (var name in names)
+            if (obj.TryGetProperty(name, out var value)) return value;
+        return default;
+    }
+
+    private static string Field(JsonElement obj, params string[] names)
+    {
+        var value = Property(obj, names);
+        return value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null or JsonValueKind.Object
+            or JsonValueKind.Array ? "" : value.ToString();
+    }
+
+    private static string DateLabel(string value)
+    {
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date))
+            return date.ToLocalTime().ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN"));
+        return value.Length == 7 && value[4] == '-' ? value[5..] + "/" + value[..4] : value;
+    }
+
+    private static string Money(string value)
+    {
+        if (!decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var amount)) return "";
+        return amount.ToString("N0", CultureInfo.GetCultureInfo("vi-VN")) + " ₫";
+    }
+
+    private static string ShortId(string value) =>
+        Guid.TryParse(value, out _) ? value[..8].ToUpperInvariant() : value;
+
     private static CustomerRecord ToRecord(JsonElement element, string route)
     {
-        static string Field(JsonElement obj, params string[] names)
+        if (element.ValueKind != JsonValueKind.Object) return new CustomerRecord { Title = element.ToString() };
+        var profile = Property(element, "profile");
+        string fullName = Field(profile, "fullName", "name");
+        string facility = Field(element, "facilityName", "facilityCode");
+        if (string.IsNullOrWhiteSpace(facility))
         {
-            if (obj.ValueKind != JsonValueKind.Object) return "";
-            foreach (var name in names)
-                if (obj.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null)
-                    return value.ValueKind is JsonValueKind.Object or JsonValueKind.Array ? "" : value.ToString();
-            return "";
+            var facilityId = Field(element, "facilityId");
+            if (!string.IsNullOrEmpty(facilityId)) facility = "Facility " + ShortId(facilityId);
         }
-        string title = route switch
+        string unitCode = Field(element, "unitCode", "storageUnitCode");
+        string contractId = Field(element, "contractId");
+        string status = Field(element, "status", "paymentStatus");
+        return route switch
         {
-            "storage" => Field(element, "name", "facilityName", "unitTypeName"),
-            "reservations" => Field(element, "unitTypeName", "facilityName", "reservationId"),
-            "contracts" => Field(element, "unitTypeName", "storageUnitCode", "contractId"),
-            "invoices" => Field(element, "invoiceNumber", "invoiceCode", "invoiceId"),
-            "support" => Field(element, "title", "subject", "ticketId"),
-            _ => Field(element, "fullName", "name", "phoneNumber", "userAccountId")
-        };
-        string subtitle = route switch
-        {
-            "storage" => Field(element, "address", "location"),
-            "reservations" => Field(element, "facilityName", "reservationId"),
-            "contracts" => Field(element, "facilityName", "contractId"),
-            "invoices" => Field(element, "contractId", "invoiceId"),
-            "support" => Field(element, "ticketId", "description"),
-            _ => Field(element, "email", "phoneNumber", "role")
-        };
-        var fields = new List<string>();
-        if (element.ValueKind != JsonValueKind.Object)
-            return new CustomerRecord { Title = element.ToString() };
-        foreach (var property in element.EnumerateObject())
-        {
-            if (property.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number
-                or JsonValueKind.True or JsonValueKind.False)
-                fields.Add($"{property.Name}: {property.Value}");
-        }
-        return new CustomerRecord
-        {
-            Title = string.IsNullOrWhiteSpace(title) ? "FRMS record" : title,
-            Subtitle = subtitle,
-            Status = Field(element, "status", "paymentStatus"),
-            Detail1 = fields.Count > 0 ? fields[0] : "",
-            Detail2 = fields.Count > 1 ? fields[1] : "",
-            Detail3 = fields.Count > 2 ? fields[2] : "",
-            Detail4 = fields.Count > 3 ? fields[3] : ""
+            "home" or "account" => new CustomerRecord
+            {
+                Title = !string.IsNullOrWhiteSpace(fullName) ? fullName : "Customer profile",
+                Subtitle = Field(element, "email"),
+                Status = status,
+                Detail1 = "Phone: " + Field(element, "phoneNumber"),
+                Detail2 = "Email: " + Field(element, "email"),
+                Detail3 = "Role: Customer"
+            },
+            "storage" => new CustomerRecord
+            {
+                Title = Field(element, "name", "facilityName"),
+                Subtitle = Field(element, "address", "location"),
+                Status = status,
+                Detail1 = Field(element, "description"),
+                Detail2 = "Contact: " + Field(element, "contactInfo")
+            },
+            "contracts" => new CustomerRecord
+            {
+                Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
+                Subtitle = facility,
+                Status = status,
+                Detail1 = "Storage: " + (string.IsNullOrWhiteSpace(unitCode) ? ShortId(Field(element, "storageUnitId")) : unitCode),
+                Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
+                Detail3 = "Start: " + DateLabel(Field(element, "startMonth")),
+                Detail4 = "End: " + DateLabel(Field(element, "endMonth")),
+                ContractId = contractId
+            },
+            "invoices" => new CustomerRecord
+            {
+                Title = Field(element, "invoiceType", "type"),
+                Subtitle = "Due: " + DateLabel(Field(element, "dueDate", "billingMonth", "createdAt")),
+                Status = status,
+                Amount = Money(Field(element, "amountDue", "totalAmount", "amount")),
+                Detail1 = "Billing period: " + DateLabel(Field(element, "billingMonth")),
+                Detail2 = "Payment: " + (!string.IsNullOrWhiteSpace(Field(element, "paidAt")) ? DateLabel(Field(element, "paidAt")) : status)
+            },
+            "support" => new CustomerRecord
+            {
+                Title = Field(element, "category", "ticketCategory", "subject"),
+                Subtitle = "Assigned: " + (Field(element, "employeeName", "assignedEmployeeName") is var emp && !string.IsNullOrWhiteSpace(emp) ? emp : "Not assigned"),
+                Status = status,
+                Content = Field(element, "content", "description", "message", "details"),
+                ContractId = contractId
+            },
+            "reservations" => new CustomerRecord
+            {
+                Title = Field(element, "unitTypeName", "facilityName") is var type && !string.IsNullOrWhiteSpace(type) ? type : "Storage reservation",
+                Subtitle = facility,
+                Status = status,
+                Detail1 = "Start: " + DateLabel(Field(element, "startMonth")),
+                Detail2 = "End: " + DateLabel(Field(element, "endMonth")),
+                Detail3 = "Deposit: " + Money(Field(element, "depositAmount", "lockedDepositAmount")),
+                Detail4 = "Handover: " + DateLabel(Field(element, "handoverDate"))
+            },
+            _ => new CustomerRecord { Title = "Record", Status = status }
         };
     }
 
-    private Task RefreshAsync() => NavigateAsync(_currentRoute);
+    private async Task RefreshAsync()
+    {
+        if (_currentRoute == "storage")
+            await FindStorageAsync();
+        else
+            await LoadPageAsync(_currentRoute, false);
+    }
 
     private async Task CheckConnectionAsync()
     {
