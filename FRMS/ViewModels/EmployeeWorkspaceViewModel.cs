@@ -42,6 +42,12 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public bool IsManager => Role == "FACILITY_MANAGER";
     private string _displayName = "Employee";
     public string DisplayName { get => _displayName; private set => SetProperty(ref _displayName, value); }
+    private string _email = "";
+    public string Email { get => _email; private set => SetProperty(ref _email, value); }
+    private string _phone = "";
+    public string Phone { get => _phone; private set => SetProperty(ref _phone, value); }
+    public bool IsHome => Route == "home";
+    public bool HasRecords => Route != "home";
     private string _facilityId = "";
     public string FacilityId { get => _facilityId; private set => SetProperty(ref _facilityId, value); }
     private string _route = "task";
@@ -58,7 +64,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public ObservableCollection<EmployeeWorkItem> Items { get; } = new();
     public ObservableCollection<string> StatusOptions { get; } = new() { "All" };
     public ObservableCollection<string> CategoryOptions { get; } = new() { "All" };
-    public bool ShowFilters => true;
+    public bool ShowFilters => Route != "home";
     public bool ShowDateFilter => Route is "access" or "task";
     private DateTime _taskDate = DateTime.Today;
     public DateTime TaskDate { get => _taskDate; set => SetProperty(ref _taskDate, value); }
@@ -120,12 +126,14 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             var profile = JsonField(data, "profile");
             DisplayName = Field(profile, "fullName") is var name && !string.IsNullOrWhiteSpace(name) ? name : "Employee";
             FacilityId = Field(profile, "facilityId");
+            Email = Field(data, "email");
+            Phone = Field(data, "phoneNumber");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             Message = "Employee profile could not be loaded: " + ex.Message;
         }
-        await NavigateAsync("task");
+        await NavigateAsync("home");
     }
 
     public void Reset()
@@ -135,19 +143,45 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _allItems.Clear();
         DisplayName = "Employee";
         FacilityId = "";
+        Email = "";
+        Phone = "";
         Role = "";
         OnPropertyChanged(nameof(IsManager));
         Message = "";
     }
 
-    private Task RefreshAsync() => NavigateAsync(Route);
+    private async Task RefreshAsync()
+    {
+        if (Route == "home")
+        {
+            try
+            {
+                using var doc = await _api.GetAsync("api/v1/auth/me");
+                var data = JsonField(doc.RootElement, "data");
+                var profile = JsonField(data, "profile");
+                DisplayName = Field(profile, "fullName") is var name && !string.IsNullOrWhiteSpace(name) ? name : "Employee";
+                FacilityId = Field(profile, "facilityId");
+                Email = Field(data, "email");
+                Phone = Field(data, "phoneNumber");
+                Message = "Profile refreshed.";
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+            {
+                Message = "Could not refresh profile: " + ex.Message;
+            }
+            return;
+        }
+        await NavigateAsync(Route);
+    }
 
     private async Task NavigateAsync(string? route)
     {
         _loading?.Cancel();
         var cts = new CancellationTokenSource();
         _loading = cts;
-        Route = route is "booking" ? "task" : route ?? "task";
+        Route = route is "booking" ? "task" : route ?? "home";
+        OnPropertyChanged(nameof(IsHome));
+        OnPropertyChanged(nameof(HasRecords));
         OnPropertyChanged(nameof(ShowFilters));
         OnPropertyChanged(nameof(ShowDateFilter));
         _allItems.Clear();
@@ -158,6 +192,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         SelectedDate = Route == "task" ? TaskDate : null;
         (string title, string description, string? path) = Route switch
         {
+            "home" => ("Home", "Your employee profile and assigned facility", null),
+            "reservations" => ("Reservations", "Customer bookings at your assigned facility", "api/v1/reservations?page=1&pageSize=20"),
             "task" => ("Task", "Daily work: reservations, arrivals, access and handovers", IsManager
                 ? "api/v1/reservations?page=1&pageSize=20"
                 : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20"),
@@ -169,6 +205,13 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         Title = title;
         Description = description;
         Message = "Loading...";
+        if (Route == "home")
+        {
+            Message = "Employee details are loaded from the authenticated profile.";
+            if (ReferenceEquals(_loading, cts)) _loading = null;
+            cts.Dispose();
+            return;
+        }
         if (path is null) { Message = "Facility assignment is required before viewing storage units."; _loading = null; cts.Dispose(); return; }
         IsLoading = true;
         try
@@ -227,7 +270,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         string customerName = Field(customer, "fullName");
         return Route switch
         {
-            "task" => new EmployeeWorkItem
+            "task" or "reservations" => new EmployeeWorkItem
             {
                 Title = !string.IsNullOrEmpty(code) ? code.Replace('_', ' ') : "Reservation",
                 Subtitle = !string.IsNullOrEmpty(customerName) ? customerName : Field(obj, "facilityName"),
