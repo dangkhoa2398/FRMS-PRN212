@@ -35,17 +35,7 @@
             </ProgressBar>
             <TextBlock Text="{Binding EmployeeWorkspace.Message}" Foreground="#64748B" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-        <Border Grid.Row="2" Padding="14">
-            <Border.Style>
-                <Style TargetType="Border" BasedOn="{StaticResource Panel}">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding EmployeeWorkspace.ShowFilters}" Value="True">
-                            <Setter Property="Visibility" Value="Visible"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
+        <Border Grid.Row="2" Style="{StaticResource Panel}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="180"/>
@@ -78,8 +68,9 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <TextBlock Text="Visit date" Foreground="#64748B" Margin="0,0,0,6"/>
-                    <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate}"/>
+                    <TextBlock Text="Task / Visit date" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate, Mode=TwoWay}"
+                                SelectedDateChanged="WorkDateChanged"/>
                 </StackPanel>
             </Grid>
         </Border>
