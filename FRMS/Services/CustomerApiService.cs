@@ -27,6 +27,26 @@ public sealed class CustomerApiService(HttpClient http)
         return (true, "");
     }
 
+    public async Task<(bool Success, string Error, string Role)> LoginEmployeeAsync(string email, string password)
+    {
+        using var response = await http.PostAsJsonAsync("api/v1/auth/employee/login", new { email, password });
+        if (!response.IsSuccessStatusCode)
+            return (false, $"Employee login failed (HTTP {(int)response.StatusCode}).", "");
+        using var payload = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        if (!payload.RootElement.TryGetProperty("data", out var data)
+            || !data.TryGetProperty("accessToken", out var access)
+            || !data.TryGetProperty("user", out var user)
+            || !user.TryGetProperty("role", out var role))
+            return (false, "Unexpected employee authentication response.", "");
+        string? roleName = role.GetString();
+        string? token = access.GetString();
+        if (string.IsNullOrWhiteSpace(token) ||
+            roleName is not ("FACILITY_STAFF" or "FACILITY_MANAGER"))
+            return (false, "Only Facility Staff and Facility Manager are supported in this desktop application.", "");
+        _token = token;
+        return (true, "", roleName);
+    }
+
     public async Task<JsonDocument> GetAsync(string path, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
