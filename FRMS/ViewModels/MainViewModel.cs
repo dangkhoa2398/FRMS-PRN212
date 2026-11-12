@@ -300,7 +300,7 @@ public sealed class MainViewModel : ObservableObject
                 Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
                 Subtitle = facility,
                 Status = status,
-                Detail1 = "Storage: " + (string.IsNullOrWhiteSpace(unitCode) ? ShortId(Field(element, "storageUnitId")) : unitCode),
+                Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
                 Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
                 Detail3 = "Start: " + DateLabel(Field(element, "startMonth")),
                 Detail4 = "End: " + DateLabel(Field(element, "endMonth")),
