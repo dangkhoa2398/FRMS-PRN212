@@ -19,43 +19,125 @@
             <Setter Property="Foreground" Value="#64748B"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
-        <Style x:Key="FilterButton" TargetType="Button">
-            <Setter Property="Background" Value="#EFF6FF"/>
-            <Setter Property="Foreground" Value="#1D4ED8"/>
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#1D4ED8"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="16,9"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        <DataTemplate x:Key="RecordCard">
+        <Style x:Key="StatusTag" TargetType="Border">
+            <Setter Property="Background" Value="#E0F2FE"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="CornerRadius" Value="13"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <DataTemplate x:Key="SimpleCard">
+            <Border Style="{StaticResource Panel}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" Foreground="#0F172A" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                        <Border Grid.Column="1" Style="{StaticResource StatusTag}" Margin="12,0,0,0">
+                            <TextBlock Text="{Binding Status}" Foreground="#0369A1" FontWeight="SemiBold"/>
+                        </Border>
+                    </Grid>
+                    <Separator Margin="0,14"/>
+                    <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,3"/>
+                    <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,3"/>
+                    <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,3"/>
+                    <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,3"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="ContractCard">
+            <Border Style="{StaticResource Panel}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontSize="19" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="{Binding Subtitle}" Foreground="#475569" Margin="0,6,0,0"/>
+                        </StackPanel>
+                        <Border Grid.Column="1" Style="{StaticResource StatusTag}">
+                            <TextBlock Text="{Binding Status}" Foreground="#0369A1" FontWeight="SemiBold"/>
+                        </Border>
+                    </Grid>
+                    <Separator Margin="0,15"/>
+                    <UniformGrid Columns="2">
+                        <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
+                        <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
+                        <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
+                        <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
+                    </UniformGrid>
+                    <StackPanel Orientation="Horizontal" Margin="0,15,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Visit date" VerticalAlignment="Center" Foreground="#475569" Margin="0,0,10,0"/>
+                        <DatePicker SelectedDate="{Binding VisitDate, Mode=TwoWay}" Width="170" Height="34"/>
+                        <Button Content="Create Access Visit" Style="{StaticResource PrimaryButton}" Margin="12,0,0,0"
+                                IsEnabled="{Binding CanCreateVisit}"
+                                Command="{Binding DataContext.CreateVisitCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="InvoiceCard">
+            <Border Style="{StaticResource Panel}">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="18" Foreground="#0F172A"/>
+                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,7,0,0"/>
+                        <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,12,0,0"/>
+                        <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,5,0,0"/>
+                        <TextBlock Text="{Binding Amount}" Foreground="#1D4ED8" FontWeight="Bold" FontSize="25" Margin="0,14,0,0"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Style="{StaticResource StatusTag}">
+                        <TextBlock Text="{Binding Status}" Foreground="#0369A1" FontWeight="SemiBold"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="SupportCard">
             <Border Style="{StaticResource Panel}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" Foreground="#0F172A"/>
-                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,5,0,0"/>
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
                         </StackPanel>
-                        <Border Grid.Column="1" Background="#E0F2FE" Padding="10,5" CornerRadius="12" VerticalAlignment="Top">
+                        <Border Grid.Column="1" Style="{StaticResource StatusTag}">
                             <TextBlock Text="{Binding Status}" Foreground="#0369A1" FontWeight="SemiBold"/>
                         </Border>
                     </Grid>
                     <Separator Margin="0,14"/>
-                    <UniformGrid Columns="2">
-                        <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,5"/>
-                        <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,5"/>
-                        <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,5"/>
-                        <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,5"/>
-                    </UniformGrid>
+                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="#334155" FontSize="14"/>
+                    <Button Content="View related contract"
+                            HorizontalAlignment="Left" Margin="0,17,0,0"
+                            Command="{Binding DataContext.OpenContractCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasContract}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </StackPanel>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
-
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid Margin="0,0,0,18">
             <StackPanel>
@@ -63,102 +145,85 @@
                 <TextBlock Text="{Binding Description}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
             </StackPanel>
             <Button Content="Refresh" HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Padding="16,9" Background="#1D4ED8" Foreground="White"
+                    Style="{StaticResource PrimaryButton}"
                     Command="{Binding DataContext.RefreshCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
         </Grid>
         <StackPanel Grid.Row="1" Margin="0,0,0,12">
-            <ProgressBar IsIndeterminate="True" Height="3" Foreground="#2563EB">
-                <ProgressBar.Style>
-                    <Style TargetType="ProgressBar">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsLoading}" Value="True">
-                                <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ProgressBar.Style>
+            <ProgressBar Height="3" IsIndeterminate="True">
+                <ProgressBar.Style><Style TargetType="ProgressBar">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers><DataTrigger Binding="{Binding IsLoading}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                    </DataTrigger></Style.Triggers>
+                </Style></ProgressBar.Style>
             </ProgressBar>
-            <TextBlock Text="{Binding Message}" Foreground="#64748B" Margin="0,8,0,0"/>
+            <TextBlock Text="{Binding Message}" Foreground="#64748B" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Home: customer information and shortcuts as specified in Draw.io -->
                 <StackPanel>
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Triggers><DataTrigger Binding="{Binding IsHome}" Value="True">
-                                <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger></Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource Panel}" Margin="0,0,12,14">
-                            <StackPanel>
-                                <TextBlock Text="Customer Information" Style="{StaticResource Heading}" Margin="0,0,0,14"/>
-                                <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource RecordCard}"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="1" Style="{StaticResource Panel}">
-                            <StackPanel>
-                                <TextBlock Text="Current Rental" Style="{StaticResource Heading}"/>
-                                <TextBlock Text="Open My Contracts to view your active rental." Style="{StaticResource Subtle}" Margin="0,12,0,20"/>
-                                <TextBlock Text="Outstanding Invoice" Style="{StaticResource Heading}"/>
-                                <TextBlock Text="Open Invoices for your amount due and payment status." Style="{StaticResource Subtle}" Margin="0,12,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                    <UniformGrid Columns="3" Margin="0,0,0,14">
-                        <Border Style="{StaticResource Panel}" Margin="0,0,10,0"><StackPanel>
-                            <TextBlock Text="Browse Storage Units" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Find facilities and available types of storage." Style="{StaticResource Subtle}" Margin="0,10,0,0"/>
+                    <StackPanel.Style><Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers><DataTrigger Binding="{Binding IsHome}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger></Style.Triggers>
+                    </Style></StackPanel.Style>
+                    <Border Style="{StaticResource Panel}">
+                        <StackPanel>
+                            <TextBlock Text="Customer Information" Style="{StaticResource Heading}" Margin="0,0,0,12"/>
+                            <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
+                        </StackPanel>
+                    </Border>
+                    <UniformGrid Columns="3">
+                        <Border Style="{StaticResource Panel}" Margin="0,0,10,14"><StackPanel>
+                            <TextBlock Text="Current Rental" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="View your active units in My Contracts." Style="{StaticResource Subtle}" Margin="0,9,0,0"/>
                         </StackPanel></Border>
-                        <Border Style="{StaticResource Panel}" Margin="0,0,10,0"><StackPanel>
-                            <TextBlock Text="My Contracts" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Review your rental periods and contracts." Style="{StaticResource Subtle}" Margin="0,10,0,0"/>
+                        <Border Style="{StaticResource Panel}" Margin="0,0,10,14"><StackPanel>
+                            <TextBlock Text="Outstanding Invoices" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="Open Invoices to view balances." Style="{StaticResource Subtle}" Margin="0,9,0,0"/>
                         </StackPanel></Border>
                         <Border Style="{StaticResource Panel}"><StackPanel>
-                            <TextBlock Text="Payments &amp; Support" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Manage invoices and support requests from the menu." Style="{StaticResource Subtle}" Margin="0,10,0,0"/>
+                            <TextBlock Text="Support Requests" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="Follow your submitted requests in Support." Style="{StaticResource Subtle}" Margin="0,9,0,0"/>
                         </StackPanel></Border>
                     </UniformGrid>
                 </StackPanel>
 
-                <!-- Find Storage: filter layout is ready; searching currently uses public facility API -->
                 <StackPanel>
-                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers><DataTrigger Binding="{Binding IsStorage}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                    <StackPanel.Style><Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers><DataTrigger Binding="{Binding IsStorage}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger></Style.Triggers>
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
-                            <TextBlock Text="Find the right storage space" Style="{StaticResource Heading}"/>
-                            <UniformGrid Columns="3" Margin="0,16,0,0">
-                                <StackPanel Margin="0,0,12,12"><TextBlock Text="Location / Facility" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Height="36" Margin="0,7,0,0" Padding="9,6"/></StackPanel>
-                                <StackPanel Margin="0,0,12,12"><TextBlock Text="Storage Type" Style="{StaticResource Subtle}"/>
-                                    <ComboBox Height="36" Margin="0,7,0,0" IsEnabled="False"><ComboBoxItem Content="All types"/></ComboBox></StackPanel>
-                                <StackPanel Margin="0,0,12,12"><TextBlock Text="Storage Size" Style="{StaticResource Subtle}"/>
-                                    <ComboBox Height="36" Margin="0,7,0,0" IsEnabled="False"><ComboBoxItem Content="All sizes"/></ComboBox></StackPanel>
-                                <StackPanel Margin="0,0,12,12"><TextBlock Text="Check-in Month" Style="{StaticResource Subtle}"/>
-                                    <DatePicker Height="36" Margin="0,7,0,0" IsEnabled="False"/></StackPanel>
-                                <StackPanel Margin="0,0,12,12"><TextBlock Text="Check-out Month" Style="{StaticResource Subtle}"/>
-                                    <DatePicker Height="36" Margin="0,7,0,0" IsEnabled="False"/></StackPanel>
-                                <StackPanel Margin="0,0,12,12"><TextBlock Text="API facilities" Style="{StaticResource Subtle}"/>
-                                    <TextBlock Text="Search by name or address below" Margin="0,10,0,0" Foreground="#2563EB"/></StackPanel>
-                            </UniformGrid>
-                            <TextBlock Text="Type, size, and month filters will be enabled when their API parameters are integrated." Style="{StaticResource Subtle}"/>
+                            <TextBlock Text="Search for Storage" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="Enter a facility name or location. Results load only when you select Find Storage." Style="{StaticResource Subtle}" Margin="0,8,0,15"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Height="42" Padding="12,9" Margin="0,0,12,0"/>
+                                <Button Grid.Column="1" Content="Find Storage" Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding DataContext.FindStorageCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            </Grid>
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="Storage results" Style="{StaticResource Heading}" Margin="0,6,0,12"/>
-                    <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource RecordCard}"/>
+                    <StackPanel>
+                        <StackPanel.Style><Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers><DataTrigger Binding="{Binding HasSearched}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger></Style.Triggers>
+                        </Style></StackPanel.Style>
+                        <TextBlock Text="Facilities" Style="{StaticResource Heading}" Margin="0,6,0,12"/>
+                        <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Reservations and Contracts -->
                 <StackPanel>
-                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/>
+                    <StackPanel.Style><Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsReservations}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                             <DataTrigger Binding="{Binding IsContracts}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
@@ -168,26 +233,43 @@
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
                         <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
-                            <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="190"
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="230"/></Grid.ColumnDefinitions>
+                            <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="210"
                                       HorizontalAlignment="Left" Height="38"/>
                             <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
-                                     Padding="10,8" Height="38"/>
+                                     Height="38" Padding="10,8"/>
                         </Grid>
                     </Border>
-                    <TextBlock Text="Records from FRMS API" Style="{StaticResource Heading}" Margin="0,8,0,12"/>
-                    <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource RecordCard}"/>
+                    <ItemsControl ItemsSource="{Binding VisibleRecords}">
+                        <ItemsControl.Style><Style TargetType="ItemsControl">
+                            <Setter Property="ItemTemplate" Value="{StaticResource SimpleCard}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsContracts}" Value="True">
+                                    <Setter Property="ItemTemplate" Value="{StaticResource ContractCard}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsInvoices}" Value="True">
+                                    <Setter Property="ItemTemplate" Value="{StaticResource InvoiceCard}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsSupport}" Value="True">
+                                    <Setter Property="ItemTemplate" Value="{StaticResource SupportCard}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </ItemsControl.Style>
+                    </ItemsControl>
                 </StackPanel>
 
                 <StackPanel>
-                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers><DataTrigger Binding="{Binding IsAccount}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                    <StackPanel.Style><Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers><DataTrigger Binding="{Binding IsAccount}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger></Style.Triggers>
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
-                            <TextBlock Text="Customer Profile" Style="{StaticResource Heading}" Margin="0,0,0,12"/>
-                            <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource RecordCard}"/>
-                            <TextBlock Text="Profile editing is not enabled in this read-only version." Style="{StaticResource Subtle}"/>
+                            <TextBlock Text="Personal Information" Style="{StaticResource Heading}" Margin="0,0,0,12"/>
+                            <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
+                            <TextBlock Text="Profile changes are not available in this screen yet." Style="{StaticResource Subtle}"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
