@@ -18,7 +18,7 @@
             <Grid Margin="24,0">
                 <TextBlock Text="FRMS  |  Self-Storage Rental" VerticalAlignment="Center" FontSize="20" FontWeight="Bold" Foreground="#1D4ED8"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding PhoneNumber}" Foreground="#334155" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CustomerName}" Foreground="#334155" Margin="0,0,15,0" VerticalAlignment="Center"/>
                     <TextBlock Text="CUSTOMER" FontWeight="SemiBold" Foreground="#475569" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
