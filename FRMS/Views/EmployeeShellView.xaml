@@ -56,12 +56,78 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Content="Storage Management" Style="{StaticResource Menu}"
-                                Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="storage"/>
-                        <Button Content="Access / Visits" Style="{StaticResource Menu}"
-                                Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="access"/>
-                        <Button Content="Support Tickets" Style="{StaticResource Menu}"
-                                Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="support"/>
+                        <Button Content="Customer Contracts" Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="storage">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Menu}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsManager}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Storage Unit Control" Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="storage">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Menu}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsManager}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Customer Check-in / Out" Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="access">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Menu}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsManager}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Visit Oversight" Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="access">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Menu}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsManager}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Resolve Tickets" Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="support">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Menu}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsManager}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Ticket Assignment" Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="support">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Menu}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsManager}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                 </DockPanel>
             </Border>
