@@ -400,6 +400,8 @@ public sealed class MainViewModel : ObservableObject
                     catch (JsonException) { name = record.UnitType; }
                 }
                 record.RelatedStorage = name;
+                record.UnitType = name;
+                record.Title = name;
             }
             else if (route == "invoices" && Guid.TryParse(record.RelatedEntityId, out _))
             {
