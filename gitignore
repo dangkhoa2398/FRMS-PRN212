@@ -1,0 +1,71 @@
+# Visual Studio / Rider
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.userprefs
+_ReSharper*/
+*.DotSettings.user
+
+# .NET build outputs
+**/bin/
+**/obj/
+**/Debug/
+**/Release/
+**/TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet local/package artifacts
+packages/
+*.nupkg
+*.snupkg
+.nuget/packages/
+
+# Logs and temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.swp
+*~
+*.log
+*.tlog
+*.cache
+
+# Generated publish artifacts
+**/publish/
+**/artifacts/
+*.publishsettings
+*.pubxml.user
+*.publish.xml
+
+# Secrets and local-only configuration
+.env
+.env.*
+!.env.example
+!.env.sample
+**/appsettings.Local.json
+**/appsettings.*.local.json
+**/secrets.json
+**/secrets.*.json
+*.pfx
+*.p12
+*.key
+*.pem
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini

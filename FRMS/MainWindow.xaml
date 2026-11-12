@@ -1,0 +1,34 @@
+<Window x:Class="FRMS.PRN212.WpfConnection.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FRMS PRN212 — API Connection" Height="340" Width="560"
+        WindowStartupLocation="CenterScreen" MinHeight="320" MinWidth="480">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="FRMS Desktop — Connection Test" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock Grid.Row="1" Text="Backend: https://localhost:7235/health"
+                   Margin="0,12,0,22" Foreground="DimGray" FontSize="14"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal">
+            <Button Content="Test API / Database Connection"
+                    Command="{Binding CheckConnectionCommand}"
+                    Padding="15,9" MinWidth="235"/>
+            <TextBlock Text="{Binding Status}" Margin="18,10,0,0"
+                       FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Border Grid.Row="3" Margin="0,22,0,0" Padding="15" Background="#FFF3F4F6"
+                CornerRadius="8" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="Response details" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding Details}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
