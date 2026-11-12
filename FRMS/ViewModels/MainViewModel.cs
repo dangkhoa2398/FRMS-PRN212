@@ -177,7 +177,7 @@ public sealed class MainViewModel : ObservableObject
         {
             "home" => ("Home", "Your account overview", "api/v1/auth/me"),
             "storage" => ("Find Storage", "Search facilities and available storage space", "api/v1/facilities?page=1&pageSize=20"),
-            "reservations" => ("My Reservations", "Your bookings and handover status", "api/v1/reservations?page=1&pageSize=20"),
+            "reservations" => ("My Reservations", "Your booked storage types and rental dates", "api/v1/reservations?page=1&pageSize=20"),
             "contracts" => ("My Contracts", "Your rental units and visits", "api/v1/contracts?page=1&pageSize=20"),
             "invoices" => ("Invoices", "Billing and payment information", "api/v1/invoices?page=1&pageSize=20"),
             "support" => ("Support Requests", "Your requests and assigned support", "api/v1/support-tickets?page=1&pageSize=20"),
@@ -238,6 +238,9 @@ public sealed class MainViewModel : ObservableObject
                 var name = Field(profile, "fullName", "name");
                 if (!string.IsNullOrWhiteSpace(name)) CustomerName = name;
             }
+            if (route == "reservations" || route == "invoices")
+                await EnrichStorageAsync(records, route, cts.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(CurrentPage, page) || !IsAuthenticated) return;
             page.SetRecords(records);
             if (route == "contracts" && !string.IsNullOrEmpty(page.ContractFilter))
                 page.Message = page.VisibleRecords.Count == 0
@@ -330,7 +333,7 @@ public sealed class MainViewModel : ObservableObject
             "contracts" => new CustomerRecord
             {
                 Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
-                Subtitle = facility,
+                Subtitle = "Contract: " + ShortId(contractId),
                 Status = status,
                 Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
                 Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
@@ -344,8 +347,11 @@ public sealed class MainViewModel : ObservableObject
                 Subtitle = "Due: " + DateLabel(Field(element, "dueDate", "billingMonth", "createdAt")),
                 Status = status,
                 Amount = Money(Field(element, "amountDue", "totalAmount", "amount")),
-                Detail1 = "Billing period: " + DateLabel(Field(element, "billingMonth")),
-                Detail2 = "Payment: " + (!string.IsNullOrWhiteSpace(Field(element, "paidAt")) ? DateLabel(Field(element, "paidAt")) : status)
+                Detail1 = Field(element, "invoiceType", "type").Equals("DEPOSIT", StringComparison.OrdinalIgnoreCase)
+                    ? "" : "Billing period: " + DateLabel(Field(element, "billingMonth")),
+                Detail2 = "Payment: " + (!string.IsNullOrWhiteSpace(Field(element, "paidAt")) ? DateLabel(Field(element, "paidAt")) : status),
+                RelatedEntityId = Field(element, "entityId"),
+                RelatedStorage = Field(element, "unitCode", "unitTypeName", "facilityName")
             },
             "support" => new CustomerRecord
             {
@@ -357,16 +363,84 @@ public sealed class MainViewModel : ObservableObject
             },
             "reservations" => new CustomerRecord
             {
-                Title = Field(element, "unitTypeName", "facilityName") is var type && !string.IsNullOrWhiteSpace(type) ? type : "Storage reservation",
-                Subtitle = facility,
+                Title = Field(element, "unitTypeName", "unitTypeMode") is var type && !string.IsNullOrWhiteSpace(type) ? type : "Booked storage type",
+                Subtitle = "Reservation: " + ShortId(Field(element, "reservationId")),
                 Status = status,
-                Detail1 = "Start: " + DateLabel(Field(element, "startMonth")),
-                Detail2 = "End: " + DateLabel(Field(element, "endMonth")),
+                Detail1 = "Unit Type ID: " + ShortId(Field(element, "unitTypeId")),
+                Detail2 = "Period: " + DateLabel(Field(element, "startMonth")) + " – " + DateLabel(Field(element, "endMonth")),
                 Detail3 = "Deposit: " + Money(Field(element, "depositAmount", "lockedDepositAmount")),
-                Detail4 = "Handover: " + DateLabel(Field(element, "handoverDate"))
+                UnitType = Field(element, "unitTypeName", "unitTypeMode") is var typeName && !string.IsNullOrWhiteSpace(typeName) ? typeName : "Type " + ShortId(Field(element, "unitTypeId")),
+                UnitTypeId = Field(element, "unitTypeId")
             },
             _ => new CustomerRecord { Title = "Record", Status = status }
         };
+    }
+
+    private async Task EnrichStorageAsync(List<CustomerRecord> records, string route, CancellationToken token)
+    {
+        // The list DTOs can omit the storage name. Resolve only associated public/owned resources.
+        var typeNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var record in records)
+        {
+            token.ThrowIfCancellationRequested();
+            if (route == "reservations")
+            {
+                if (!Guid.TryParse(record.UnitTypeId, out _)) continue;
+                if (!typeNames.TryGetValue(record.UnitTypeId, out var name))
+                {
+                    try
+                    {
+                        using var typeDoc = await _api.GetAsync("api/v1/unit-types/" + record.UnitTypeId, token);
+                        var typeData = Property(typeDoc.RootElement, "data");
+                        name = Field(typeData, "name", "unitTypeName");
+                        if (string.IsNullOrWhiteSpace(name)) name = record.UnitType;
+                        typeNames[record.UnitTypeId] = name;
+                    }
+                    catch (HttpRequestException) { name = record.UnitType; }
+                    catch (JsonException) { name = record.UnitType; }
+                }
+                record.RelatedStorage = name;
+            }
+            else if (route == "invoices" && Guid.TryParse(record.RelatedEntityId, out _))
+            {
+                try
+                {
+                    string resource = record.Title.Equals("DEPOSIT", StringComparison.OrdinalIgnoreCase)
+                        ? "reservations" : "contracts";
+                    using var detail = await _api.GetAsync($"api/v1/{resource}/{record.RelatedEntityId}", token);
+                    var data = Property(detail.RootElement, "data");
+                    if (resource == "contracts")
+                    {
+                        var unit = Field(data, "unitCode", "storageUnitCode");
+                        if (!string.IsNullOrWhiteSpace(unit))
+                            record.RelatedStorage = "Unit " + unit;
+                        else
+                        {
+                            unit = Field(data, "storageUnitId");
+                            if (!string.IsNullOrWhiteSpace(unit)) record.RelatedStorage = "Storage ID: " + ShortId(unit);
+                        }
+                    }
+                    else
+                    {
+                        var typeName = Field(data, "unitTypeName", "unitTypeMode");
+                        var typeId = Field(data, "unitTypeId");
+                        if (string.IsNullOrWhiteSpace(typeName) && Guid.TryParse(typeId, out _))
+                        {
+                            if (!typeNames.TryGetValue(typeId, out typeName))
+                            {
+                                using var typeDoc = await _api.GetAsync("api/v1/unit-types/" + typeId, token);
+                                typeName = Field(Property(typeDoc.RootElement, "data"), "name", "unitTypeName");
+                                typeNames[typeId] = typeName;
+                            }
+                        }
+                        if (!string.IsNullOrWhiteSpace(typeName)) record.RelatedStorage = "Storage type: " + typeName;
+                        else if (!string.IsNullOrWhiteSpace(typeId)) record.RelatedStorage = "Unit Type ID: " + ShortId(typeId);
+                    }
+                }
+                catch (HttpRequestException) { /* Keep base invoice data when detail is unavailable. */ }
+                catch (JsonException) { /* Malformed optional detail does not hide the invoice. */ }
+            }
+        }
     }
 
     private async Task RefreshAsync()
