@@ -372,9 +372,11 @@ public sealed class MainViewModel : ObservableObject
     private async Task RefreshAsync()
     {
         if (_currentRoute == "storage")
-            await FindStorageAsync();
-        else
-            await LoadPageAsync(_currentRoute, false);
+        {
+            if (CurrentPage.HasSearched) await FindStorageAsync();
+            return;
+        }
+        await LoadPageAsync(_currentRoute, false);
     }
 
     private async Task CheckConnectionAsync()
