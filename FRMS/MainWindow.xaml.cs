@@ -1,5 +1,6 @@
 using System.Windows;
 using FRMS.PRN212.WpfConnection.ViewModels;
+using FRMS.PRN212.WpfConnection.Views;
 
 namespace FRMS.PRN212.WpfConnection;
 
@@ -9,5 +10,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        LoginHost.Content = new LoginView();
+        ShellHost.Content = new CustomerShellView();
     }
 }
