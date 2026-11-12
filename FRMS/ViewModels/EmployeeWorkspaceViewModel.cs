@@ -48,6 +48,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public string Phone { get => _phone; private set => SetProperty(ref _phone, value); }
     public bool IsHome => Route == "home";
     public bool HasRecords => Route != "home";
+    private string _facilityName = "";
+    public string FacilityName { get => _facilityName; private set => SetProperty(ref _facilityName, value); }
     private string _facilityId = "";
     public string FacilityId { get => _facilityId; private set => SetProperty(ref _facilityId, value); }
     private string _route = "task";
@@ -112,6 +114,22 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand RefreshCommand { get; }
     public IAsyncRelayCommand TaskDateChangedCommand { get; }
 
+    private async Task ReadFacilityNameAsync()
+    {
+        FacilityName = "";
+        if (!Guid.TryParse(FacilityId, out _)) return;
+        try
+        {
+            using var doc = await _api.GetAsync($"api/v1/facilities/{FacilityId}");
+            var facility = JsonField(doc.RootElement, "data");
+            FacilityName = Field(facility, "name", "facilityName");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // Employee profile remains available if public facility information cannot be read.
+        }
+    }
+
     private Task TaskDateChangedAsync() => Route == "task" ? NavigateAsync("task") : Task.CompletedTask;
 
     public async Task InitializeAsync(string role)
@@ -128,6 +146,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             FacilityId = Field(profile, "facilityId");
             Email = Field(data, "email");
             Phone = Field(data, "phoneNumber");
+            await ReadFacilityNameAsync();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
@@ -143,6 +162,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _allItems.Clear();
         DisplayName = "Employee";
         FacilityId = "";
+        FacilityName = "";
         Email = "";
         Phone = "";
         Role = "";
@@ -163,6 +183,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 FacilityId = Field(profile, "facilityId");
                 Email = Field(data, "email");
                 Phone = Field(data, "phoneNumber");
+                await ReadFacilityNameAsync();
                 Message = "Profile refreshed.";
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
@@ -272,13 +293,22 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         {
             "task" or "reservations" => new EmployeeWorkItem
             {
-                Title = !string.IsNullOrEmpty(code) ? code.Replace('_', ' ') : "Reservation",
+                Title = !string.IsNullOrWhiteSpace(Field(obj, "unitTypeName"))
+                    ? Field(obj, "unitTypeName")
+                    : !string.IsNullOrEmpty(code) ? code.Replace('_', ' ') : "Customer reservation",
                 Subtitle = !string.IsNullOrEmpty(customerName) ? customerName : Field(obj, "facilityName"),
                 Status = status,
-                Detail1 = "Start: " + Field(obj, "startMonth", "scheduledDate"),
-                Detail2 = "End: " + Field(obj, "endMonth"),
-                Description = Field(obj, "unitTypeName", "resultNote"),
-                Category = Field(obj, "workType", "unitTypeMode"),
+                Detail1 = Route == "task"
+                    ? "Scheduled: " + Field(obj, "scheduledDate", "startMonth")
+                    : "Rental start: " + Field(obj, "startMonth"),
+                Detail2 = Route == "task"
+                    ? "Customer phone: " + Field(customer, "phoneNumber")
+                    : "Rental end: " + Field(obj, "endMonth"),
+                Description = Route == "task"
+                    ? "Work: " + Field(obj, "workType", "resultNote")
+                    : "Unit type: " + Field(obj, "unitTypeMode", "unitTypeName"),
+                Category = Route == "task"
+                    ? Field(obj, "workType") : Field(obj, "unitTypeMode", "unitTypeName"),
                 DateValue = Field(obj, "scheduledDate")
             },
             "storage" => new EmployeeWorkItem
