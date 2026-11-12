@@ -30,8 +30,8 @@
                     <Button DockPanel.Dock="Bottom" Content="Log out" Style="{StaticResource Menu}"
                             Command="{Binding LogoutCommand}" Margin="7,8,7,18"/>
                     <StackPanel Margin="0,18,0,0">
-                        <Button Content="Booking Assistance" Style="{StaticResource Menu}"
-                                Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="booking"/>
+                        <Button Content="Task" Style="{StaticResource Menu}"
+                                Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="task"/>
                         <Button Content="Storage Management" Style="{StaticResource Menu}"
                                 Command="{Binding EmployeeWorkspace.NavigateCommand}" CommandParameter="storage"/>
                         <Button Content="Access / Visits" Style="{StaticResource Menu}"
