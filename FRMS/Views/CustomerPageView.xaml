@@ -254,7 +254,7 @@
                                     <Setter Property="ItemTemplate" Value="{StaticResource SupportCard}"/>
                                 </DataTrigger>
                             </Style.Triggers>
-                        </ItemsControl.Style>
+                        </Style></ItemsControl.Style>
                     </ItemsControl>
                 </StackPanel>
 
