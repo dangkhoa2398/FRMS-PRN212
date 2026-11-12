@@ -7,7 +7,7 @@ namespace FRMS.PRN212.WpfConnection.ViewModels;
 
 public sealed class CustomerRecord : ObservableObject
 {
-    public string Title { get; init; } = "";
+    public string Title { get; set; } = "";
     public string Subtitle { get; init; } = "";
     public string Status { get; init; } = "";
     public string Detail1 { get; init; } = "";
@@ -16,7 +16,7 @@ public sealed class CustomerRecord : ObservableObject
     public string Detail4 { get; init; } = "";
     public string Amount { get; init; } = "";
     public string Content { get; init; } = "";
-    public string UnitType { get; init; } = "";
+    public string UnitType { get; set; } = "";
     public string UnitTypeId { get; init; } = "";
     public string RelatedEntityId { get; init; } = "";
     public string RelatedStorage { get; set; } = "";
