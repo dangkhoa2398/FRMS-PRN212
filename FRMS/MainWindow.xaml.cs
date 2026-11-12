@@ -12,5 +12,6 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         LoginHost.Content = new LoginView();
         ShellHost.Content = new CustomerShellView();
+        EmployeeShellHost.Content = new EmployeeShellView();
     }
 }
