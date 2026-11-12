@@ -35,7 +35,52 @@
             </ProgressBar>
             <TextBlock Text="{Binding EmployeeWorkspace.Message}" Foreground="#64748B" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-        <Border Grid.Row="2" Style="{StaticResource Panel}">
+        <Border Grid.Row="2" Padding="24">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource Panel}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsHome}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel>
+                <TextBlock Text="Employee Information" FontSize="21" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,20"/>
+                <TextBlock Text="Full name" Foreground="#64748B"/>
+                <TextBlock Text="{Binding EmployeeWorkspace.DisplayName}" FontWeight="SemiBold" FontSize="20" Margin="0,5,0,18" Foreground="#0F172A"/>
+                <UniformGrid Columns="2">
+                    <StackPanel Margin="0,0,18,16">
+                        <TextBlock Text="Email" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.Email}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,18,16">
+                        <TextBlock Text="Phone" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.Phone}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,18,0">
+                        <TextBlock Text="Role" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.Role}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,18,0">
+                        <TextBlock Text="Assigned Facility ID" Foreground="#64748B"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityId}" FontSize="13" Foreground="#0F172A" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </UniformGrid>
+            </StackPanel>
+        </Border>
+        <Border Grid.Row="2" Padding="20">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource Panel}">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsHome}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="180"/>
@@ -74,7 +119,17 @@
                 </StackPanel>
             </Grid>
         </Border>
-        <Border Grid.Row="3" Style="{StaticResource Panel}">
+        <Border Grid.Row="3">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource Panel}">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EmployeeWorkspace.IsHome}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding EmployeeWorkspace.Items}">
                     <ItemsControl.ItemTemplate>
