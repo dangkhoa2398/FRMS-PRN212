@@ -1,6 +1,8 @@
-# Visual Studio / Rider
+# Visual Studio, VS Code, JetBrains IDE
 .vs/
+**/.vs/
 .idea/
+.vscode/
 *.suo
 *.user
 *.userosscache
@@ -9,24 +11,27 @@
 *.userprefs
 _ReSharper*/
 *.DotSettings.user
+*.slnx.user
 
-# .NET build outputs
+# Build outputs and generated files
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
 **/bin/
 **/obj/
-**/Debug/
-**/Release/
 **/TestResults/
 *.trx
 *.coverage
 *.coveragexml
 
-# NuGet local/package artifacts
+# NuGet packages and generated caches
 packages/
 *.nupkg
 *.snupkg
 .nuget/packages/
 
-# Logs and temporary files
+# Logs, temporary and backups
 *.tmp
 *.temp
 *.bak
@@ -37,14 +42,14 @@ packages/
 *.tlog
 *.cache
 
-# Generated publish artifacts
+# Publish artifacts
 **/publish/
 **/artifacts/
 *.publishsettings
 *.pubxml.user
 *.publish.xml
 
-# Secrets and local-only configuration
+# Local secrets
 .env
 .env.*
 !.env.example
@@ -58,14 +63,14 @@ packages/
 *.key
 *.pem
 
-# Local databases
+# Local database
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
 
-# Operating system files
+# Operating system
 .DS_Store
 Thumbs.db
 Desktop.ini
