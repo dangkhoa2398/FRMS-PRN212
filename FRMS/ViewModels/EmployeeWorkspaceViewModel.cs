@@ -83,14 +83,18 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         CategoryOptions.Add("All");
         foreach (var category in _allItems.Select(x => x.Category).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x))
             CategoryOptions.Add(category);
+        // Re-select All after rebuilding ComboBox items. WPF may clear SelectedItem
+        // when its previous item is removed, which otherwise hides every result.
+        SelectedStatus = "All";
+        SelectedCategory = "All";
         ApplyFilters();
     }
 
     private void ApplyFilters()
     {
         var result = _allItems.Where(x =>
-            (SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
-            (SelectedCategory == "All" || x.Category.Equals(SelectedCategory, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(SelectedStatus) || SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(SelectedCategory) || SelectedCategory == "All" || x.Category.Equals(SelectedCategory, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(SearchText) || x.SearchText.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)) &&
             (Route == "task" || !ShowDateFilter || !SelectedDate.HasValue ||
              (DateTime.TryParse(x.DateValue, out var date) && date.Date == SelectedDate.Value.Date)));
