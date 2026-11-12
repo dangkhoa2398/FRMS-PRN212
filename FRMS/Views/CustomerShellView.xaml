@@ -36,7 +36,6 @@
                         <Button Content="My Contracts" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="contracts"/>
                         <Button Content="Invoices" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="invoices"/>
                         <Button Content="Support" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="support"/>
-                        <Button Content="Account Settings" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="account"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
