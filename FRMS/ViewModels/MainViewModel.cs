@@ -19,19 +19,35 @@ public partial class MainViewModel : ObservableObject
     {
         _api = api;
         _health = health;
-        CurrentPage = new CustomerPageViewModel("Home", "Your customer overview.");
+        LoginCommand = new AsyncRelayCommand<PasswordBox>(LoginAsync);
+        LogoutCommand = new RelayCommand(Logout);
+        NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync);
+        RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
 
-    [ObservableProperty] private string _phoneNumber = "";
-    [ObservableProperty] private string _loginError = "";
-    [ObservableProperty] private bool _isAuthenticated;
-    [ObservableProperty] private bool _isLoggingIn;
-    [ObservableProperty] private string _status = "Not tested";
-    [ObservableProperty] private string _details = "Check your backend database connection.";
-    [ObservableProperty] private CustomerPageViewModel _currentPage;
+    private string _phoneNumber = "";
+    public string PhoneNumber { get => _phoneNumber; set => SetProperty(ref _phoneNumber, value); }
+    private string _loginError = "";
+    public string LoginError { get => _loginError; set => SetProperty(ref _loginError, value); }
+    private bool _isAuthenticated;
+    public bool IsAuthenticated { get => _isAuthenticated; set => SetProperty(ref _isAuthenticated, value); }
+    private bool _isLoggingIn;
+    public bool IsLoggingIn { get => _isLoggingIn; set => SetProperty(ref _isLoggingIn, value); }
+    private string _status = "Not tested";
+    public string Status { get => _status; set => SetProperty(ref _status, value); }
+    private string _details = "Check your backend database connection.";
+    public string Details { get => _details; set => SetProperty(ref _details, value); }
+    private CustomerPageViewModel _currentPage = new("Home", "Customer account overview.");
+    public CustomerPageViewModel CurrentPage { get => _currentPage; set => SetProperty(ref _currentPage, value); }
 
-    [RelayCommand]
-    private async Task LoginAsync(PasswordBox passwordBox)
+    public IAsyncRelayCommand<PasswordBox> LoginCommand { get; }
+    public IRelayCommand LogoutCommand { get; }
+    public IAsyncRelayCommand<string> NavigateCommand { get; }
+    public IAsyncRelayCommand RefreshCommand { get; }
+    public IAsyncRelayCommand CheckConnectionCommand { get; }
+
+    private async Task LoginAsync(PasswordBox? passwordBox)
     {
         if (IsLoggingIn || passwordBox is null) return;
         LoginError = "";
@@ -56,7 +72,6 @@ public partial class MainViewModel : ObservableObject
         finally { IsLoggingIn = false; }
     }
 
-    [RelayCommand]
     private void Logout()
     {
         _api.Logout();
@@ -65,7 +80,6 @@ public partial class MainViewModel : ObservableObject
         IsAuthenticated = false;
     }
 
-    [RelayCommand]
     private async Task NavigateAsync(string? route)
     {
         if (!IsAuthenticated) return;
@@ -123,10 +137,8 @@ public partial class MainViewModel : ObservableObject
         return parts.Count == 0 ? "Record available (see API for details)" : string.Join("   |   ", parts);
     }
 
-    [RelayCommand]
     private Task RefreshAsync() => NavigateAsync(_currentRoute);
 
-    [RelayCommand]
     private async Task CheckConnectionAsync()
     {
         Status = "Checking...";
