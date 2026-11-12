@@ -195,21 +195,7 @@
                             <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
                         </StackPanel>
                     </Border>
-                    <UniformGrid Columns="3">
-                        <Border Style="{StaticResource Panel}" Margin="0,0,10,14"><StackPanel>
-                            <TextBlock Text="Current Rental" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="View your active units in My Contracts." Style="{StaticResource Subtle}" Margin="0,9,0,0"/>
-                        </StackPanel></Border>
-                        <Border Style="{StaticResource Panel}" Margin="0,0,10,14"><StackPanel>
-                            <TextBlock Text="Outstanding Invoices" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Open Invoices to view balances." Style="{StaticResource Subtle}" Margin="0,9,0,0"/>
-                        </StackPanel></Border>
-                        <Border Style="{StaticResource Panel}"><StackPanel>
-                            <TextBlock Text="Support Requests" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Follow your submitted requests in Support." Style="{StaticResource Subtle}" Margin="0,9,0,0"/>
-                        </StackPanel></Border>
-                    </UniformGrid>
-                </StackPanel>
+</StackPanel>
 
                 <StackPanel>
                     <StackPanel.Style><Style TargetType="StackPanel">
