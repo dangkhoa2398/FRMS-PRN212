@@ -34,6 +34,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _api = api;
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        TaskDateChangedCommand = new AsyncRelayCommand(TaskDateChangedAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
     }
 
     private string _role = "";
@@ -57,8 +58,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public ObservableCollection<EmployeeWorkItem> Items { get; } = new();
     public ObservableCollection<string> StatusOptions { get; } = new() { "All" };
     public ObservableCollection<string> CategoryOptions { get; } = new() { "All" };
-    public bool ShowFilters => Route is "storage" or "access" or "support";
-    public bool ShowDateFilter => Route == "access";
+    public bool ShowFilters => true;
+    public bool ShowDateFilter => Route is "access" or "task";
+    private DateTime _taskDate = DateTime.Today;
+    public DateTime TaskDate { get => _taskDate; set => SetProperty(ref _taskDate, value); }
     private string _searchText = "";
     public string SearchText { get => _searchText; set { if (SetProperty(ref _searchText, value)) ApplyFilters(); } }
     private string _selectedStatus = "All";
@@ -89,13 +92,17 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             (SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
             (SelectedCategory == "All" || x.Category.Equals(SelectedCategory, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(SearchText) || x.SearchText.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)) &&
-            (!ShowDateFilter || !SelectedDate.HasValue || (DateTime.TryParse(x.DateValue, out var date) && date.Date == SelectedDate.Value.Date)));
+            (Route == "task" || !ShowDateFilter || !SelectedDate.HasValue ||
+             (DateTime.TryParse(x.DateValue, out var date) && date.Date == SelectedDate.Value.Date)));
         Items.Clear();
         foreach (var item in result) Items.Add(item);
     }
 
     public IAsyncRelayCommand<string> NavigateCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
+    public IAsyncRelayCommand TaskDateChangedCommand { get; }
+
+    private Task TaskDateChangedAsync() => Route == "task" ? NavigateAsync("task") : Task.CompletedTask;
 
     public async Task InitializeAsync(string role)
     {
@@ -144,19 +151,21 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         SearchText = "";
         SelectedStatus = "All";
         SelectedCategory = "All";
-        SelectedDate = null;
+        SelectedDate = Route == "task" ? TaskDate : null;
         (string title, string description, string? path) = Route switch
         {
-            "task" => ("Task", "Today’s assigned work, reservations and customer handovers", IsManager ? "api/v1/reservations?page=1&pageSize=20" : "api/v1/staff/work-items?page=1&pageSize=20"),
+            "task" => ("Task", "Daily work: reservations, arrivals, access and handovers", IsManager
+                ? "api/v1/reservations?page=1&pageSize=20"
+                : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20"),
             "storage" => ("Storage Management", "Rental units and facility operations", IsManager && Guid.TryParse(FacilityId, out _) ? $"api/v1/facilities/{FacilityId}/storage-units?page=1&pageSize=20" : "api/v1/contracts?page=1&pageSize=20"),
             "access" => ("Check-in / Check-out", "Scheduled visits and access activity", IsManager ? "api/v1/visits?page=1&pageSize=20" : "api/v1/staff/work-items?page=1&pageSize=20"),
             "support" => ("Support Tickets", "Requests submitted by customers", "api/v1/support-tickets?page=1&pageSize=20"),
-            _ => ("Task", "Reservations and handover work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : "api/v1/staff/work-items?page=1&pageSize=20")
+            _ => ("Task", "Daily work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20")
         };
         Title = title;
         Description = description;
         Message = "Loading...";
-        if (path is null) { Message = "Facility assignment is required before viewing storage units."; return; }
+        if (path is null) { Message = "Facility assignment is required before viewing storage units."; _loading = null; cts.Dispose(); return; }
         IsLoading = true;
         try
         {
@@ -174,7 +183,9 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
             UpdateFilters(records);
-            Message = records.Count == 0 ? "No work items found." : $"{records.Count} record(s) loaded (filters apply to this page).";
+            Message = records.Count == 0
+                ? (Route == "task" ? $"No tasks found for {TaskDate:dd/MM/yyyy}." : "No records found.")
+                : $"{Items.Count} of {records.Count} record(s) shown.";
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
