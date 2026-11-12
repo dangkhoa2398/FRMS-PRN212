@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace FRMS.PRN212.WpfConnection.ViewModels;
 
-public partial class CustomerPageViewModel : ObservableObject
+public sealed class CustomerPageViewModel : ObservableObject
 {
     public CustomerPageViewModel(string title, string description)
     {
@@ -14,6 +14,18 @@ public partial class CustomerPageViewModel : ObservableObject
     public string Title { get; }
     public string Description { get; }
     public ObservableCollection<string> Items { get; } = new();
-    [ObservableProperty] private string _message = "Loading...";
-    [ObservableProperty] private bool _isLoading;
+
+    private string _message = "Loading...";
+    public string Message
+    {
+        get => _message;
+        set => SetProperty(ref _message, value);
+    }
+
+    private bool _isLoading;
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
+    }
 }
