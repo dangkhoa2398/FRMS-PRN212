@@ -91,6 +91,7 @@
                     <StackPanel>
                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="18" Foreground="#0F172A"/>
                         <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,7,0,0"/>
+                        <TextBlock Text="{Binding RelatedStorage}" Style="{StaticResource Subtle}" Margin="0,12,0,0"/>
                         <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,12,0,0"/>
                         <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,5,0,0"/>
                         <TextBlock Text="{Binding Amount}" Foreground="#1D4ED8" FontWeight="Bold" FontSize="25" Margin="0,14,0,0"/>
@@ -99,6 +100,26 @@
                         <TextBlock Text="{Binding Status}" Foreground="#0369A1" FontWeight="SemiBold"/>
                     </Border>
                 </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="ReservationCard">
+            <Border Style="{StaticResource Panel}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="19" Foreground="#0F172A"/>
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                        <Border Grid.Column="1" Style="{StaticResource StatusTag}">
+                            <TextBlock Text="{Binding Status}" Foreground="#0369A1" FontWeight="SemiBold"/>
+                        </Border>
+                    </Grid>
+                    <Separator Margin="0,14"/>
+                    <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,7,0,0"/>
+                    <TextBlock Text="{Binding Detail3}" Foreground="#1D4ED8" FontWeight="SemiBold" Margin="0,11,0,0"/>
+                </StackPanel>
             </Border>
         </DataTemplate>
         <DataTemplate x:Key="SupportCard">
@@ -224,10 +245,13 @@
                                     <TextBlock Text="Check-out Month" Style="{StaticResource Subtle}"/>
                                     <DatePicker SelectedDate="{Binding EndMonth, Mode=TwoWay}" Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
+                                <StackPanel Margin="0,0,14,14" VerticalAlignment="Bottom">
+                                    <TextBlock Text=" " Style="{StaticResource Subtle}"/>
+                                    <Button Content="Find Storage" Style="{StaticResource PrimaryButton}" Height="38" Margin="0,7,0,0"
+                                            Command="{Binding DataContext.FindStorageCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                </StackPanel>
                             </UniformGrid>
-                            <Button Content="Find Storage" Style="{StaticResource PrimaryButton}"
-                                    HorizontalAlignment="Left" MinWidth="150"
-                                    Command="{Binding DataContext.FindStorageCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+
                         </StackPanel>
                     </Border>
                     <StackPanel>
@@ -255,8 +279,23 @@
                     <Border Style="{StaticResource Panel}">
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="230"/></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
                             <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="210"
                                       HorizontalAlignment="Left" Height="38"/>
+                                <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="200"
+                                          Height="38" Margin="12,0,0,0">
+                                    <ComboBox.Style>
+                                        <Style TargetType="ComboBox">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsReservations}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ComboBox.Style>
+                                </ComboBox>
+                            </StackPanel>
                             <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
                                      Height="38" Padding="10,8"/>
                         </Grid>
@@ -265,6 +304,9 @@
                         <ItemsControl.Style><Style TargetType="ItemsControl">
                             <Setter Property="ItemTemplate" Value="{StaticResource SimpleCard}"/>
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsReservations}" Value="True">
+                                    <Setter Property="ItemTemplate" Value="{StaticResource ReservationCard}"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsContracts}" Value="True">
                                     <Setter Property="ItemTemplate" Value="{StaticResource ContractCard}"/>
                                 </DataTrigger>
