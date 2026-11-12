@@ -38,5 +38,18 @@ public sealed class CustomerApiService(HttpClient http)
         return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
     }
 
+    public async Task CreateAccessVisitAsync(Guid contractId, DateTime visitDate, CancellationToken cancellationToken = default)
+    {
+        if (contractId == Guid.Empty) throw new ArgumentException("A contract is required.", nameof(contractId));
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/contracts/{contractId:D}/access-visits")
+        {
+            Content = JsonContent.Create(new { visitDate = visitDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) })
+        };
+        if (!string.IsNullOrWhiteSpace(_token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        using var response = await http.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     public void Logout() => _token = null;
 }
