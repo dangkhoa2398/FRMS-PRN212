@@ -17,7 +17,7 @@ public partial class MainViewModel(IFrmsHealthService healthService) : Observabl
     private async Task CheckConnectionAsync()
     {
         Status = "Checking...";
-        Details = "Contacting /health over HTTPS.";
+        Details = "Contacting http://localhost:5164/health.";
 
         try
         {
@@ -28,7 +28,7 @@ public partial class MainViewModel(IFrmsHealthService healthService) : Observabl
         catch (HttpRequestException ex)
         {
             Status = "Connection failed";
-            Details = $"HTTP/TLS connection failed: {ex.Message}";
+            Details = $"HTTP connection failed: {ex.Message}";
         }
         catch (TaskCanceledException)
         {
