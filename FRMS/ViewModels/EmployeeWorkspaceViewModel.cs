@@ -40,6 +40,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     private string _role = "";
     public string Role { get => _role; private set => SetProperty(ref _role, value); }
     public bool IsManager => Role == "FACILITY_MANAGER";
+    public bool IsStaff => Role == "FACILITY_STAFF";
     private string _displayName = "Employee";
     public string DisplayName { get => _displayName; private set => SetProperty(ref _displayName, value); }
     private string _email = "";
@@ -137,6 +138,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _loading?.Cancel();
         Role = role;
         OnPropertyChanged(nameof(IsManager));
+        OnPropertyChanged(nameof(IsStaff));
         try
         {
             using var doc = await _api.GetAsync("api/v1/auth/me");
@@ -218,9 +220,15 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             "task" => ("Task", "Daily work: reservations, arrivals, access and handovers", IsManager
                 ? "api/v1/reservations?page=1&pageSize=20"
                 : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20"),
-            "storage" => ("Storage Management", "Rental units and facility operations", IsManager && Guid.TryParse(FacilityId, out _) ? $"api/v1/facilities/{FacilityId}/storage-units?page=1&pageSize=20" : "api/v1/contracts?page=1&pageSize=20"),
-            "access" => ("Check-in / Check-out", "Scheduled visits and access activity", IsManager ? "api/v1/visits?page=1&pageSize=20" : "api/v1/staff/work-items?page=1&pageSize=20"),
-            "support" => ("Support Tickets", "Requests submitted by customers", "api/v1/support-tickets?page=1&pageSize=20"),
+            "storage" => IsManager
+                ? ("Storage Unit Control", "Physical storage units at your facility: code, location and operational status", Guid.TryParse(FacilityId, out _) ? $"api/v1/facilities/{FacilityId}/storage-units?page=1&pageSize=20" : null)
+                : ("Customer Contracts", "Customer rental contracts and unit assignments", "api/v1/contracts?page=1&pageSize=20"),
+            "access" => IsManager
+                ? ("Visit Oversight", "Facility visits and customer access schedules", "api/v1/visits?page=1&pageSize=20")
+                : ("Customer Check-in / Out", "Daily customer access and handover work", $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20"),
+            "support" => IsManager
+                ? ("Ticket Assignment", "Review and coordinate customer support requests", "api/v1/support-tickets?page=1&pageSize=20")
+                : ("Resolve Tickets", "Follow up on customer tickets assigned to staff", "api/v1/support-tickets?page=1&pageSize=20"),
             _ => ("Task", "Daily work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20")
         };
         Title = title;
@@ -233,7 +241,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             cts.Dispose();
             return;
         }
-        if (path is null) { Message = "Facility assignment is required before viewing storage units."; _loading = null; cts.Dispose(); return; }
+        if (path is null) { Message = "Manager facility ID is missing from the authenticated profile; storage units cannot be loaded."; _loading = null; cts.Dispose(); return; }
         IsLoading = true;
         try
         {
@@ -245,6 +253,11 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             {
                 var nested = JsonField(data, "items");
                 if (nested.ValueKind == JsonValueKind.Array) data = nested;
+                else
+                {
+                    nested = JsonField(data, "data");
+                    if (nested.ValueKind == JsonValueKind.Array) data = nested;
+                }
             }
             var records = new List<EmployeeWorkItem>();
             if (data.ValueKind == JsonValueKind.Array)
@@ -311,6 +324,17 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                     ? Field(obj, "workType") : Field(obj, "unitTypeMode", "unitTypeName"),
                 DateValue = Field(obj, "scheduledDate")
             },
+            "storage" when IsManager => new EmployeeWorkItem
+            {
+                Title = Field(obj, "unitCode") is var codeName && !string.IsNullOrWhiteSpace(codeName)
+                    ? codeName : "Storage unit",
+                Subtitle = "Location: " + (Field(obj, "locationInfo") is var location && !string.IsNullOrWhiteSpace(location) ? location : "Not specified"),
+                Status = status,
+                Detail1 = "Unit type ID: " + Field(obj, "unitTypeId"),
+                Detail2 = "Storage unit ID: " + Field(obj, "storageUnitId"),
+                Description = "Facility: " + (string.IsNullOrWhiteSpace(FacilityName) ? Field(obj, "facilityId") : FacilityName),
+                Category = Field(obj, "unitTypeId")
+            },
             "storage" => new EmployeeWorkItem
             {
                 Title = !string.IsNullOrEmpty(code) ? code : "Storage unit",
@@ -320,7 +344,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Detail2 = !string.IsNullOrWhiteSpace(Field(obj, "startMonth")) ?
                     "Rental period: " + Field(obj, "startMonth") + " – " + Field(obj, "endMonth") :
                     "Location: " + Field(obj, "location", "locationDescription"),
-                Description = Field(obj, "description", "size"),
+                Description = "Contract: " + Field(obj, "contractId"),
                 Category = Field(obj, "unitTypeName", "unitTypeMode", "mode")
             },
             "access" => new EmployeeWorkItem
@@ -341,7 +365,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Status = status,
                 Detail1 = "Assignee: " + (Field(obj, "assignedEmployeeName", "employeeName") is var employee && !string.IsNullOrWhiteSpace(employee) ? employee : "Unassigned"),
                 Detail2 = "Category: " + Field(obj, "category", "ticketCategory"),
-                Description = Field(obj, "content", "description", "message"),
+                Description = Field(obj, "description", "content", "message"),
                 Category = Field(obj, "category", "ticketCategory")
             }
         };
