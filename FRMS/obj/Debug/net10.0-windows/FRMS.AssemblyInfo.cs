@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FRMS")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6d63baa3dcdb03c856c3d5e8e08cb537513ddcd9")]
 [assembly: System.Reflection.AssemblyProductAttribute("FRMS")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FRMS")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

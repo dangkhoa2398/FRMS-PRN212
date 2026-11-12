@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\PRN212\\FRMS\\FRMS\\FRMS.csproj": {}
+    "D:\\PRN212\\FRMS\\FRMS-PRN212\\FRMS\\FRMS.csproj": {}
   },
   "projects": {
-    "D:\\PRN212\\FRMS\\FRMS\\FRMS.csproj": {
+    "D:\\PRN212\\FRMS\\FRMS-PRN212\\FRMS\\FRMS.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\PRN212\\FRMS\\FRMS\\FRMS.csproj",
+        "projectUniqueName": "D:\\PRN212\\FRMS\\FRMS-PRN212\\FRMS\\FRMS.csproj",
         "projectName": "FRMS",
-        "projectPath": "D:\\PRN212\\FRMS\\FRMS\\FRMS.csproj",
+        "projectPath": "D:\\PRN212\\FRMS\\FRMS-PRN212\\FRMS\\FRMS.csproj",
         "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "D:\\PRN212\\FRMS\\FRMS\\obj\\",
+        "outputPath": "D:\\PRN212\\FRMS\\FRMS-PRN212\\FRMS\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
