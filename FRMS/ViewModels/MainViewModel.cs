@@ -24,7 +24,7 @@ public sealed class MainViewModel : ObservableObject
         _health = health;
         LoginCommand = new AsyncRelayCommand<PasswordBox>(LoginAsync);
         LogoutCommand = new RelayCommand(Logout);
-        NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync);
+        NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
@@ -88,7 +88,8 @@ public sealed class MainViewModel : ObservableObject
     {
         if (!IsAuthenticated) return;
         _currentRoute = route ?? "home";
-        var (title, description, path) = _currentRoute switch
+        var selectedRoute = _currentRoute;
+        var (title, description, path) = selectedRoute switch
         {
             "home" => ("Home", "Customer information and account overview", "api/v1/auth/me"),
             "storage" => ("Find Storage", "Browse facilities and find storage space", "api/v1/facilities?page=1&pageSize=20"),
@@ -104,7 +105,7 @@ public sealed class MainViewModel : ObservableObject
         _navigationCts?.Cancel();
         var cts = new CancellationTokenSource();
         _navigationCts = cts;
-        var page = new CustomerPageViewModel(_currentRoute, title, description);
+        var page = new CustomerPageViewModel(selectedRoute, title, description);
         CurrentPage = page;
         page.IsLoading = true;
 
@@ -126,11 +127,11 @@ public sealed class MainViewModel : ObservableObject
             if (items.ValueKind == JsonValueKind.Array)
             {
                 foreach (var item in items.EnumerateArray())
-                    records.Add(ToRecord(item, _currentRoute));
+                    records.Add(ToRecord(item, selectedRoute));
             }
             else if (items.ValueKind == JsonValueKind.Object)
             {
-                records.Add(ToRecord(items, _currentRoute));
+                records.Add(ToRecord(items, selectedRoute));
             }
             page.SetRecords(records);
             page.Message = records.Count == 0 ? "No data returned for this page." :
@@ -186,6 +187,8 @@ public sealed class MainViewModel : ObservableObject
             _ => Field(element, "email", "phoneNumber", "role")
         };
         var fields = new List<string>();
+        if (element.ValueKind != JsonValueKind.Object)
+            return new CustomerRecord { Title = element.ToString() };
         foreach (var property in element.EnumerateObject())
         {
             if (property.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number
