@@ -17,8 +17,9 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddHttpClient<IFrmsHealthService, FrmsHealthService>(client =>
         {
-            // The FRMS backend is already running on this HTTPS port.
-            client.BaseAddress = new Uri("https://localhost:7235/");
+            // Local FRMS HTTP endpoint; avoids untrusted localhost development TLS certificates.
+            // Use HTTPS with a trusted certificate outside local development.
+            client.BaseAddress = new Uri("http://localhost:5164/");
             client.Timeout = TimeSpan.FromSeconds(10);
         });
         services.AddTransient<MainViewModel>();
