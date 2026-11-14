@@ -32,6 +32,8 @@ public sealed class MainViewModel : ObservableObject
         FindStorageCommand = new AsyncRelayCommand(FindStorageAsync);
         OpenContractCommand = new AsyncRelayCommand<CustomerRecord>(OpenContractAsync);
         CreateVisitCommand = new AsyncRelayCommand<CustomerRecord>(CreateVisitAsync);
+        CreateReservationCommand = new AsyncRelayCommand(CreateReservationAsync);
+        CreateSupportTicketCommand = new AsyncRelayCommand(CreateSupportTicketAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
 
@@ -70,6 +72,8 @@ public sealed class MainViewModel : ObservableObject
     public IAsyncRelayCommand FindStorageCommand { get; }
     public IAsyncRelayCommand<CustomerRecord> OpenContractCommand { get; }
     public IAsyncRelayCommand<CustomerRecord> CreateVisitCommand { get; }
+    public IAsyncRelayCommand CreateReservationCommand { get; }
+    public IAsyncRelayCommand CreateSupportTicketCommand { get; }
     public IAsyncRelayCommand CheckConnectionCommand { get; }
 
     private async Task LoginAsync(PasswordBox? passwordBox)
@@ -170,6 +174,71 @@ public sealed class MainViewModel : ObservableObject
         if (record is null || !record.HasContract || !IsAuthenticated) return;
         _pendingContractId = record.ContractId;
         await LoadPageAsync("contracts", false);
+    }
+
+    private async Task CreateReservationAsync()
+    {
+        var page = CurrentPage;
+        if (!Guid.TryParse(page.ReservationFacilityId.Trim(), out var facilityId) ||
+            !Guid.TryParse(page.ReservationUnitTypeId.Trim(), out var unitTypeId))
+        {
+            page.Message = "Enter valid Facility ID and Unit Type ID from the search results.";
+            return;
+        }
+        if (!DateOnly.TryParseExact(page.ReservationStartMonth, "yyyy-MM", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var start) ||
+            !DateOnly.TryParseExact(page.ReservationEndMonth, "yyyy-MM", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var end) || end < start)
+        {
+            page.Message = "Enter valid rental months in yyyy-MM format; end month must not precede start month.";
+            return;
+        }
+        var nextMonth = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1);
+        if (start < nextMonth) { page.Message = "Reservation must start after the current business month."; return; }
+        page.IsLoading = true;
+        page.Message = "Submitting reservation...";
+        try
+        {
+            using var result = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/reservations",
+                new { facilityId, unitTypeId, startMonth = page.ReservationStartMonth.Trim(), endMonth = page.ReservationEndMonth.Trim() });
+            page.Message = "Reservation created. Check My Reservations for its deposit invoice and current status.";
+            await LoadPageAsync("reservations", false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            page.Message = "Reservation was not created: " + ex.Message;
+            page.IsLoading = false;
+        }
+    }
+
+    private async Task CreateSupportTicketAsync()
+    {
+        var page = CurrentPage;
+        if (!Guid.TryParse(page.TicketContractId.Trim(), out var contractId))
+        {
+            page.Message = "Enter a valid Contract ID from My Contracts.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(page.TicketDescription) || page.TicketDescription.Trim().Length > 1000)
+        {
+            page.Message = "Describe the issue (1–1000 characters).";
+            return;
+        }
+        page.IsLoading = true;
+        page.Message = "Submitting support ticket...";
+        try
+        {
+            using var result = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/support-tickets",
+                new { contractId, category = page.TicketCategory, description = page.TicketDescription.Trim() });
+            page.TicketDescription = "";
+            page.Message = "Support ticket created successfully.";
+            await LoadPageAsync("support", false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            page.Message = "Support ticket was not created: " + ex.Message;
+            page.IsLoading = false;
+        }
     }
 
     private async Task CreateVisitAsync(CustomerRecord? record)
