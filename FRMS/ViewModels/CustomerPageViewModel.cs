@@ -128,11 +128,8 @@ public sealed class CustomerPageViewModel : ObservableObject
 
         // Re-select a valid option after rebuilding ItemsSource. WPF may otherwise
         // keep a stale SelectedItem reference when the ObservableCollection is cleared.
-        if (!UnitTypeOptions.Contains(UnitTypeFilter))
-            UnitTypeFilter = "All";
-        else
-            UnitTypeFilter = "All";
-
+        UnitTypeFilter = "All";
+        OnPropertyChanged(nameof(UnitTypeFilter));
         ApplyFilter();
     }
 
