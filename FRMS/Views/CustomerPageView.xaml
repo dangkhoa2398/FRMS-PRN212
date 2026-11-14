@@ -250,6 +250,33 @@
                         <TextBlock Text="Facilities" Style="{StaticResource Heading}" Margin="0,6,0,12"/>
                         <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
                     </StackPanel>
+                    <Border Style="{StaticResource Panel}" Margin="0,14,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Create Reservation" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="Search facilities above, copy the Facility ID, then enter a Unit Type ID and rental period. Availability and eligibility are validated by the backend."
+                                       Style="{StaticResource Subtle}" Margin="0,6,0,12"/>
+                            <UniformGrid Columns="2">
+                                <StackPanel Margin="0,0,12,10">
+                                    <TextBlock Text="Facility ID" Style="{StaticResource Subtle}"/>
+                                    <TextBox Text="{Binding ReservationFacilityId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="Unit Type ID" Style="{StaticResource Subtle}"/>
+                                    <TextBox Text="{Binding ReservationUnitTypeId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,12,10">
+                                    <TextBlock Text="Start month (yyyy-MM)" Style="{StaticResource Subtle}"/>
+                                    <TextBox Text="{Binding ReservationStartMonth, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="End month (yyyy-MM)" Style="{StaticResource Subtle}"/>
+                                    <TextBox Text="{Binding ReservationEndMonth, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                </StackPanel>
+                            </UniformGrid>
+                            <Button Content="Submit Reservation" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
+                                    Command="{Binding DataContext.CreateReservationCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <StackPanel>
@@ -285,6 +312,22 @@
                             <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
                                      Height="38" Padding="10,8"/>
                         </Grid>
+                    </Border>
+                    <Border Style="{StaticResource Panel}">
+                        <StackPanel>
+                            <TextBlock Text="Create Support Ticket" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="A ticket must be linked to one of your contracts. Copy its Contract ID from My Contracts."
+                                       Style="{StaticResource Subtle}" Margin="0,6,0,12"/>
+                            <TextBlock Text="Contract ID" Style="{StaticResource Subtle}"/>
+                            <TextBox Text="{Binding TicketContractId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8" Margin="0,6,0,12"/>
+                            <TextBlock Text="Category" Style="{StaticResource Subtle}"/>
+                            <ComboBox ItemsSource="{Binding TicketCategories}" SelectedItem="{Binding TicketCategory}" Height="36" Margin="0,6,0,12"/>
+                            <TextBlock Text="Description (max 1000 characters)" Style="{StaticResource Subtle}"/>
+                            <TextBox Text="{Binding TicketDescription, UpdateSourceTrigger=PropertyChanged}" Height="85" Padding="8"
+                                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,6,0,12"/>
+                            <Button Content="Submit Ticket" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
+                                    Command="{Binding DataContext.CreateSupportTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </StackPanel>
                     </Border>
                     <ItemsControl ItemsSource="{Binding VisibleRecords}">
                         <ItemsControl.Style><Style TargetType="ItemsControl">
