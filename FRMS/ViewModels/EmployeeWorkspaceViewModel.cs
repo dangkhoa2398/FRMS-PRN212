@@ -50,6 +50,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         TaskDateChangedCommand = new AsyncRelayCommand(TaskDateChangedAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
+        ClearWorkDateFilterCommand = new RelayCommand(() => SelectedDate = null);
         CheckInCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckInAsync);
         CheckOutCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckOutAsync);
         CompleteTicketCommand = new AsyncRelayCommand<EmployeeWorkItem>(CompleteTicketAsync);
@@ -141,6 +142,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand<string> NavigateCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
     public IAsyncRelayCommand TaskDateChangedCommand { get; }
+    public IRelayCommand ClearWorkDateFilterCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CheckInCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CheckOutCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CompleteTicketCommand { get; }
