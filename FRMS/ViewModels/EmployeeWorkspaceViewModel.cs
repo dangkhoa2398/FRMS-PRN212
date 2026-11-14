@@ -358,7 +358,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         {
             using var doc = await _api.GetAsync($"api/v1/facilities/{id:D}/unit-types?page=1&pageSize=100", token);
             var data = JsonField(doc.RootElement, "data");
-            if (data.ValueKind == JsonValueKind.Object) data = JsonField(data, "items", "data");
+            if (data.ValueKind == JsonValueKind.Object) data = JsonField(data, "items");
             if (data.ValueKind != JsonValueKind.Array) return;
             foreach (var item in data.EnumerateArray())
             {
@@ -382,7 +382,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         {
             using var doc = await _api.GetAsync($"api/v1/facilities/{id:D}/staff/lookup?page=1&pageSize=100", token);
             var data = JsonField(doc.RootElement, "data");
-            if (data.ValueKind == JsonValueKind.Object) data = JsonField(data, "items", "data");
+            if (data.ValueKind == JsonValueKind.Object) data = JsonField(data, "items");
             if (data.ValueKind != JsonValueKind.Array) return;
             foreach (var item in data.EnumerateArray())
             {
