@@ -12,8 +12,12 @@ using FRMS.PRN212.WpfConnection.Services;
 
 namespace FRMS.PRN212.WpfConnection.ViewModels;
 
-public sealed class EmployeeWorkItem
+public sealed class EmployeeWorkItem : ObservableObject
 {
+    private string _inspectionNote = "";
+    public string InspectionNote { get => _inspectionNote; set => SetProperty(ref _inspectionNote, value); }
+    public bool IsInspection => WorkType == "INSPECTION";
+    public bool IsVisit => WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT";
     public string Title { get; init; } = "";
     public string Subtitle { get; init; } = "";
     public string Status { get; init; } = "";
@@ -25,6 +29,7 @@ public sealed class EmployeeWorkItem
     public string ReferenceId { get; init; } = "";
     public string EntityId { get; init; } = "";
     public string StorageUnitId { get; init; } = "";
+    public string InspectionId { get; init; } = "";
     public string WorkType { get; init; } = "";
     public string SearchText => string.Join(" ", Title, Subtitle, Status, Detail1, Detail2, Description, Category);
 }
@@ -54,6 +59,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         AssignHandoverUnitCommand = new AsyncRelayCommand<EmployeeWorkItem>(AssignHandoverUnitAsync);
         CompleteHandoverCommand = new AsyncRelayCommand<EmployeeWorkItem>(CompleteHandoverAsync);
         ConfirmReturnCommand = new AsyncRelayCommand<EmployeeWorkItem>(ConfirmReturnAsync);
+        ClaimInspectionCommand = new AsyncRelayCommand<EmployeeWorkItem>(ClaimInspectionAsync);
+        CompleteInspectionCommand = new AsyncRelayCommand<EmployeeWorkItem>(CompleteInspectionAsync);
     }
 
     private string _role = "";
@@ -125,7 +132,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             (string.IsNullOrWhiteSpace(SelectedStatus) || SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(SelectedCategory) || SelectedCategory == "All" || x.Category.Equals(SelectedCategory, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(SearchText) || x.SearchText.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)) &&
-            (Route == "task" || !ShowDateFilter || !SelectedDate.HasValue ||
+            (!ShowDateFilter || !SelectedDate.HasValue ||
              (DateTime.TryParse(x.DateValue, out var date) && date.Date == SelectedDate.Value.Date)));
         Items.Clear();
         foreach (var item in result) Items.Add(item);
@@ -143,6 +150,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand<EmployeeWorkItem> AssignHandoverUnitCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CompleteHandoverCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> ConfirmReturnCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> ClaimInspectionCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> CompleteInspectionCommand { get; }
     private string _actionInput = "";
     public string ActionInput { get => _actionInput; set => SetProperty(ref _actionInput, value); }
     private string _actionNote = "";
@@ -177,7 +186,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         }
     }
 
-    private Task TaskDateChangedAsync() => Route == "task" ? NavigateAsync("task") : Task.CompletedTask;
+    private Task TaskDateChangedAsync() => Route is "task" or "access" ? NavigateAsync(Route) : Task.CompletedTask;
 
     public async Task InitializeAsync(string role)
     {
@@ -259,7 +268,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         SearchText = "";
         SelectedStatus = "All";
         SelectedCategory = "All";
-        SelectedDate = Route == "task" ? TaskDate : null;
+        SelectedDate = Route is "task" or "access" ? TaskDate : null;
         (string title, string description, string? path) = Route switch
         {
             "home" => ("Home", "Your employee profile and assigned facility", null),
@@ -311,11 +320,12 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             if (data.ValueKind == JsonValueKind.Array)
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
-            if (Route == "access" && IsStaff) records = records.Where(x => x.WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT").ToList();
+            if (Route == "access" && IsStaff) records = records.Where(x => x.IsVisit).ToList();
             if (IsManager && Route == "support") await LoadFacilityStaffAsync(cts.Token);
             UpdateFilters(records);
             Message = records.Count == 0
-                ? (Route == "task" ? $"No tasks found for {TaskDate:dd/MM/yyyy}." : "No records found.")
+                ? (Route == "task" ? $"No tasks assigned for {TaskDate:dd/MM/yyyy}." :
+                   Route == "access" ? $"No customer visits scheduled for {TaskDate:dd/MM/yyyy}. Choose another date to load its visits." : "No records found.")
                 : $"{Items.Count} of {records.Count} record(s) shown.";
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
@@ -328,6 +338,41 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             if (ReferenceEquals(_loading, cts)) { _loading = null; IsLoading = false; }
             cts.Dispose();
         }
+    }
+
+    private async Task ClaimInspectionAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !item.IsInspection ||
+            !Guid.TryParse(item.InspectionId, out var inspectionId))
+        { Message = "Inspection reference is missing."; return; }
+        try
+        {
+            using var response = await _api.SendJsonAsync(HttpMethod.Post,
+                $"api/v1/inspections/{inspectionId:D}/claim");
+            await NavigateAsync("task");
+            Message = "Inspection claimed. Add your condition note before completing.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        { Message = "Could not claim inspection: " + ex.Message; }
+    }
+
+    private async Task CompleteInspectionAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !item.IsInspection ||
+            !Guid.TryParse(item.InspectionId, out var inspectionId))
+        { Message = "Inspection reference is missing."; return; }
+        if (string.IsNullOrWhiteSpace(item.InspectionNote))
+        { Message = "Enter a condition note for this inspection."; return; }
+        try
+        {
+            using var response = await _api.SendJsonAsync(HttpMethod.Post,
+                $"api/v1/inspections/{inspectionId:D}/complete",
+                new { conditionNote = item.InspectionNote.Trim() });
+            await NavigateAsync("task");
+            Message = "Inspection completed.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        { Message = "Could not complete inspection: " + ex.Message; }
     }
 
     private Task CheckInAsync(EmployeeWorkItem? item) => SendVisitCommandAsync(item, "check-in");
@@ -512,7 +557,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         string code = Field(obj, "unitCode", "storageUnitCode", "unitTypeName", "workType", "visitType", "category", "invoiceType");
         string status = Field(obj, "status");
         string subject = Field(obj, "title", "subject", "name", "description");
-        string customerName = Field(customer, "fullName");
+        string customerName = Field(customer, "fullName", "name", "customerName");
         return Route switch
         {
             "task" or "reservations" => new EmployeeWorkItem
@@ -520,13 +565,13 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Title = !string.IsNullOrWhiteSpace(Field(obj, "unitTypeName"))
                     ? Field(obj, "unitTypeName")
                     : !string.IsNullOrEmpty(code) ? code.Replace('_', ' ') : "Customer reservation",
-                Subtitle = !string.IsNullOrEmpty(customerName) ? customerName : Field(obj, "facilityName"),
+                Subtitle = !string.IsNullOrEmpty(customerName) ? "Customer: " + customerName : "Work item (no customer linked)",
                 Status = status,
                 Detail1 = Route == "task"
-                    ? "Scheduled: " + Field(obj, "scheduledDate", "startMonth")
+                    ? "Scheduled: " + (Field(obj, "scheduledDate", "startMonth") is var scheduled && !string.IsNullOrWhiteSpace(scheduled) ? scheduled : "Not specified")
                     : "Rental start: " + Field(obj, "startMonth"),
                 Detail2 = Route == "task"
-                    ? "Customer phone: " + Field(customer, "phoneNumber")
+                    ? "Customer phone: " + (Field(customer, "phoneNumber", "phone") is var phone && !string.IsNullOrWhiteSpace(phone) ? phone : "Not provided")
                     : "Rental end: " + Field(obj, "endMonth"),
                 Description = Route == "task"
                     ? "Work: " + Field(obj, "workType", "resultNote")
@@ -536,7 +581,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 DateValue = Field(obj, "scheduledDate"),
                 ReferenceId = Field(obj, "referenceId", "reservationId"),
                 EntityId = Field(obj, "entityId"),
-                WorkType = Field(obj, "workType")
+                WorkType = Field(obj, "workType"),
+                InspectionId = Field(obj, "inspectionId")
             },
             "storage" when IsManager => new EmployeeWorkItem
             {
