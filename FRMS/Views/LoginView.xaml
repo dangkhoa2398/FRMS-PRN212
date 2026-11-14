@@ -44,13 +44,6 @@
                 <Button Content="Sign in" Command="{Binding LoginCommand}"
                         CommandParameter="{Binding ElementName=PasswordInput}"
                         Background="#1D4ED8" Foreground="White" Height="44" Margin="0,22,0,0"/>
-                <Separator Margin="0,24,0,14"/>
-                <TextBlock Text="Backend / Database" FontWeight="SemiBold"/>
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <Button Content="Test connection" Command="{Binding CheckConnectionCommand}" Padding="10,6"/>
-                    <TextBlock Text="{Binding Status}" Margin="12,7,0,0" Foreground="#334155"/>
-                </StackPanel>
-                <TextBlock Text="{Binding Details}" Foreground="#64748B" TextWrapping="Wrap" Margin="0,8,0,0"/>
             </StackPanel>
         </Border>
     </Grid>
