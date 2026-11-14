@@ -29,6 +29,12 @@ public sealed class EmployeeWorkItem
     public string SearchText => string.Join(" ", Title, Subtitle, Status, Detail1, Detail2, Description, Category);
 }
 
+public sealed class EmployeeLookupOption
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+}
+
 public sealed class EmployeeWorkspaceViewModel : ObservableObject
 {
     private readonly CustomerApiService _api;
@@ -140,6 +146,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public string ActionInput { get => _actionInput; set => SetProperty(ref _actionInput, value); }
     private string _actionNote = "";
     public string ActionNote { get => _actionNote; set => SetProperty(ref _actionNote, value); }
+    public ObservableCollection<EmployeeLookupOption> AvailableUnitTypes { get; } = new();
+    public ObservableCollection<EmployeeLookupOption> FacilityStaff { get; } = new();
+    private string _selectedStaffId = "";
+    public string SelectedStaffId { get => _selectedStaffId; set => SetProperty(ref _selectedStaffId, value); }
     private string _newUnitTypeId = "";
     public string NewUnitTypeId { get => _newUnitTypeId; set => SetProperty(ref _newUnitTypeId, value); }
     private string _newUnitCode = "";
@@ -299,6 +309,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
             if (Route == "access" && IsStaff) records = records.Where(x => x.WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT").ToList();
+            if (IsManager && Route == "storage") await LoadAvailableUnitTypesAsync(cts.Token);
+            if (IsManager && Route == "support") await LoadFacilityStaffAsync(cts.Token);
             UpdateFilters(records);
             Message = records.Count == 0
                 ? (Route == "task" ? $"No tasks found for {TaskDate:dd/MM/yyyy}." : "No records found.")
@@ -333,10 +345,56 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     }
     private async Task AssignTicketAsync(EmployeeWorkItem? item)
     {
-        if (item is null || !Guid.TryParse(item.ReferenceId, out var ticketId) || !Guid.TryParse(ActionInput.Trim(), out var employeeId)) { Message = "Enter a valid Facility Staff Employee ID."; return; }
-        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/support-tickets/" + ticketId.ToString("D") + "/assign", new { employeeId }); ActionInput = ""; Message = "Support ticket assigned."; await NavigateAsync("support"); }
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var ticketId) || !Guid.TryParse(SelectedStaffId, out var employeeId)) { Message = "Choose a facility staff member."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/support-tickets/" + ticketId.ToString("D") + "/assign", new { employeeId }); SelectedStaffId = ""; Message = "Support ticket assigned."; await NavigateAsync("support"); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Ticket assignment failed: " + ex.Message; }
     }
+
+    private async Task LoadAvailableUnitTypesAsync(CancellationToken token)
+    {
+        AvailableUnitTypes.Clear();
+        if (!Guid.TryParse(FacilityId, out var id)) return;
+        try
+        {
+            using var doc = await _api.GetAsync($"api/v1/facilities/{id:D}/unit-types?page=1&pageSize=100", token);
+            var data = JsonField(doc.RootElement, "data");
+            if (data.ValueKind == JsonValueKind.Object) data = JsonField(data, "items", "data");
+            if (data.ValueKind != JsonValueKind.Array) return;
+            foreach (var item in data.EnumerateArray())
+            {
+                var typeId = Field(item, "unitTypeId");
+                if (!Guid.TryParse(typeId, out _)) continue;
+                var name = string.Join(" | ", new[] {
+                    Field(item, "name", "unitTypeName"), Field(item, "mode"), Field(item, "size")
+                }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                AvailableUnitTypes.Add(new EmployeeLookupOption { Id = typeId, Name = name });
+            }
+        }
+        catch (HttpRequestException) { /* Creating storage is still possible after reloading. */ }
+        catch (JsonException) { }
+    }
+
+    private async Task LoadFacilityStaffAsync(CancellationToken token)
+    {
+        FacilityStaff.Clear();
+        if (!Guid.TryParse(FacilityId, out var id)) return;
+        try
+        {
+            using var doc = await _api.GetAsync($"api/v1/facilities/{id:D}/staff/lookup?page=1&pageSize=100", token);
+            var data = JsonField(doc.RootElement, "data");
+            if (data.ValueKind == JsonValueKind.Object) data = JsonField(data, "items", "data");
+            if (data.ValueKind != JsonValueKind.Array) return;
+            foreach (var item in data.EnumerateArray())
+            {
+                var staffId = Field(item, "employeeId");
+                if (!Guid.TryParse(staffId, out _) || !Field(item, "status").Equals("ACTIVE", StringComparison.OrdinalIgnoreCase)) continue;
+                FacilityStaff.Add(new EmployeeLookupOption { Id = staffId, Name = Field(item, "fullName") });
+            }
+        }
+        catch (HttpRequestException) { }
+        catch (JsonException) { }
+    }
+
     private async Task CreateStorageUnitAsync()
     {
         if (!Guid.TryParse(FacilityId, out var facilityId) || !Guid.TryParse(NewUnitTypeId.Trim(), out var unitTypeId) || string.IsNullOrWhiteSpace(NewUnitCode)) { Message = "Enter a valid Unit Type ID and Unit Code. Manager facility must be loaded."; return; }
@@ -351,9 +409,66 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     }
     private async Task AssignHandoverUnitAsync(EmployeeWorkItem? item)
     {
-        if (item is null || !Guid.TryParse(item.ReferenceId, out var reservationId) || !Guid.TryParse(ActionInput.Trim(), out var storageUnitId)) { Message = "Enter a valid Storage Unit ID for this reservation."; return; }
-        try { using var response = await _api.SendJsonAsync(HttpMethod.Put, "api/v1/reservations/" + reservationId.ToString("D") + "/handover-unit-assignment", new { storageUnitId }); ActionInput = ""; Message = "Handover unit assignment saved."; await NavigateAsync("reservations"); }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Unit assignment failed: " + ex.Message; }
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var reservationId))
+        {
+            Message = "Reservation ID is missing."; return;
+        }
+        IsLoading = true;
+        try
+        {
+            // Reservation detail is authoritative for the exact requested facility and Unit Type.
+            using var reservationDoc = await _api.GetAsync($"api/v1/reservations/{reservationId:D}");
+            var reservation = JsonField(reservationDoc.RootElement, "data");
+            if (!Guid.TryParse(Field(reservation, "facilityId"), out var facilityId) ||
+                !Guid.TryParse(Field(reservation, "unitTypeId"), out var unitTypeId))
+            {
+                Message = "Reservation detail has no facility or storage type."; return;
+            }
+            if (!string.Equals(facilityId.ToString("D"), FacilityId, StringComparison.OrdinalIgnoreCase))
+            {
+                Message = "Reservation does not belong to your assigned facility."; return;
+            }
+            // Only same-type AVAILABLE units are considered. The database procedure
+            // remains authoritative for reservation/visit eligibility and assignment conflicts.
+            using var unitsDoc = await _api.GetAsync(
+                $"api/v1/facilities/{facilityId:D}/storage-units?unitTypeId={unitTypeId:D}&status=AVAILABLE&page=1&pageSize=100");
+            var units = JsonField(unitsDoc.RootElement, "data");
+            if (units.ValueKind == JsonValueKind.Object)
+                units = JsonField(units, "items", "data");
+            if (units.ValueKind != JsonValueKind.Array || units.GetArrayLength() == 0)
+            {
+                Message = "No available physical storage unit matches this reservation."; return;
+            }
+            var errors = new List<string>();
+            foreach (var unit in units.EnumerateArray())
+            {
+                if (!Guid.TryParse(Field(unit, "storageUnitId"), out var storageUnitId)) continue;
+                try
+                {
+                    using var response = await _api.SendJsonAsync(HttpMethod.Put,
+                        $"api/v1/reservations/{reservationId:D}/handover-unit-assignment", new { storageUnitId });
+                    var code = Field(unit, "unitCode");
+                    await NavigateAsync("reservations");
+                    Message = "Assigned " + (string.IsNullOrWhiteSpace(code) ? storageUnitId.ToString("D")[..8] : code) +
+                        " to reservation successfully.";
+                    return;
+                }
+                catch (HttpRequestException ex)
+                {
+                    // A conflicting unit may be skipped, but the backend must still approve assignment.
+                    errors.Add(ex.Message);
+                    if (!ex.Message.Contains("409", StringComparison.OrdinalIgnoreCase) &&
+                        !ex.Message.Contains("CONFLICT", StringComparison.OrdinalIgnoreCase)) throw;
+                }
+            }
+            Message = "No unit could be assigned. A checked-in reservation visit is required; " +
+                "units already assigned elsewhere cannot be used. " + string.Join(" | ", errors.Take(2));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            Message = "Automatic unit assignment failed: " + ex.Message;
+        }
+        finally { IsLoading = false; }
     }
     private async Task CompleteHandoverAsync(EmployeeWorkItem? item)
     {
