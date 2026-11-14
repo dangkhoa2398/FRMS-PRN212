@@ -10,7 +10,7 @@ public partial class EmployeePageView : UserControl
 
     private async void WorkDateChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DataContext is not MainViewModel main || main.EmployeeWorkspace.Route != "task")
+        if (DataContext is not MainViewModel main || main.EmployeeWorkspace.Route is not ("task" or "access"))
             return;
         if (sender is not DatePicker picker || picker.SelectedDate is not DateTime chosen)
             return;
