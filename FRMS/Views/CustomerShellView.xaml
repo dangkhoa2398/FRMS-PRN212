@@ -34,6 +34,7 @@
                         <Button Content="Find Storage" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="storage"/>
                         <Button Content="My Reservations" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="reservations"/>
                         <Button Content="My Contracts" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="contracts"/>
+                        <Button Content="Ra / Vào" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="access"/>
                         <Button Content="Invoices" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="invoices"/>
                         <Button Content="Support" Style="{StaticResource MenuButton}" Command="{Binding NavigateCommand}" CommandParameter="support"/>
                     </StackPanel>
