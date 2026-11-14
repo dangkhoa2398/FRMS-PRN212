@@ -96,7 +96,17 @@
                               SelectedItem="{Binding EmployeeWorkspace.SelectedStatus}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                    <TextBlock Text="Type / Category" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding EmployeeWorkspace.ShowCategoryFilter}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Storage Type / Category" Foreground="#64748B" Margin="0,0,0,6"/>
                     <ComboBox Height="36" ItemsSource="{Binding EmployeeWorkspace.CategoryOptions}"
                               SelectedItem="{Binding EmployeeWorkspace.SelectedCategory}"/>
                 </StackPanel>
@@ -119,7 +129,7 @@
                     <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate, Mode=TwoWay}"
                                 SelectedDateChanged="WorkDateChanged"/>
                 </StackPanel>
-                <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,14,0,0">
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Margin="0,14,0,0">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -134,10 +144,23 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <ComboBox Width="210" Height="34" Margin="0,0,8,0" ToolTip="Select Storage Type" ItemsSource="{Binding EmployeeWorkspace.AvailableUnitTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EmployeeWorkspace.NewUnitTypeId, Mode=TwoWay}"/>
-                    <TextBox Width="150" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Unit Code" Text="{Binding EmployeeWorkspace.NewUnitCode, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBox Width="220" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Location information" Text="{Binding EmployeeWorkspace.NewUnitLocation, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Button Content="Create Storage Unit" Padding="12,7" Command="{Binding EmployeeWorkspace.CreateStorageUnitCommand}"/>
+                    <TextBlock Text="Create a physical storage unit" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,4"/>
+                    <TextBlock Text="Choose its storage type, enter a unique code and describe where the unit is located." Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <WrapPanel>
+                        <StackPanel Width="245" Margin="0,0,12,10">
+                            <TextBlock Text="Storage type (required)" Foreground="#475569" Margin="0,0,0,5"/>
+                            <ComboBox Height="34" ToolTip="Select a named storage type, e.g. Small Private" ItemsSource="{Binding EmployeeWorkspace.AvailableUnitTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EmployeeWorkspace.NewUnitTypeId, Mode=TwoWay}"/>
+                        </StackPanel>
+                        <StackPanel Width="160" Margin="0,0,12,10">
+                            <TextBlock Text="Unit code (required)" Foreground="#475569" Margin="0,0,0,5"/>
+                            <TextBox Height="34" Padding="7" ToolTip="Unique physical unit code, e.g. A-103" Text="{Binding EmployeeWorkspace.NewUnitCode, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Width="265" Margin="0,0,12,10">
+                            <TextBlock Text="Location (optional)" Foreground="#475569" Margin="0,0,0,5"/>
+                            <TextBox Height="34" Padding="7" ToolTip="Location of the unit, e.g. Floor 1 - Row A" Text="{Binding EmployeeWorkspace.NewUnitLocation, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <Button Content="Create Storage Unit" Padding="12,7" Height="34" Margin="0,20,0,10" Command="{Binding EmployeeWorkspace.CreateStorageUnitCommand}"/>
+                    </WrapPanel>
                 </StackPanel>
             </Grid>
         </Border>
