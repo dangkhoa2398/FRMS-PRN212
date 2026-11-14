@@ -434,7 +434,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 $"api/v1/facilities/{facilityId:D}/storage-units?unitTypeId={unitTypeId:D}&status=AVAILABLE&page=1&pageSize=100");
             var units = JsonField(unitsDoc.RootElement, "data");
             if (units.ValueKind == JsonValueKind.Object)
-                units = JsonField(units, "items", "data");
+                units = JsonField(units, "items");
             if (units.ValueKind != JsonValueKind.Array || units.GetArrayLength() == 0)
             {
                 Message = "No available physical storage unit matches this reservation."; return;
