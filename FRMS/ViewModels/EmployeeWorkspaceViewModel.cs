@@ -45,6 +45,9 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         AssignTicketCommand = new AsyncRelayCommand<EmployeeWorkItem>(AssignTicketAsync);
         CreateStorageUnitCommand = new AsyncRelayCommand(CreateStorageUnitAsync);
         ChangeStorageStatusCommand = new AsyncRelayCommand<EmployeeWorkItem>(ChangeStorageStatusAsync);
+        AssignHandoverUnitCommand = new AsyncRelayCommand<EmployeeWorkItem>(AssignHandoverUnitAsync);
+        CompleteHandoverCommand = new AsyncRelayCommand<EmployeeWorkItem>(CompleteHandoverAsync);
+        ConfirmReturnCommand = new AsyncRelayCommand<EmployeeWorkItem>(ConfirmReturnAsync);
     }
 
     private string _role = "";
@@ -130,6 +133,9 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand<EmployeeWorkItem> AssignTicketCommand { get; }
     public IAsyncRelayCommand CreateStorageUnitCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> ChangeStorageStatusCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> AssignHandoverUnitCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> CompleteHandoverCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> ConfirmReturnCommand { get; }
     private string _actionInput = "";
     public string ActionInput { get => _actionInput; set => SetProperty(ref _actionInput, value); }
     private string _actionNote = "";
@@ -342,6 +348,24 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/storage-units/" + unitId.ToString("D") + "/status", new { status = StorageStatus }); Message = "Storage unit status updated."; await NavigateAsync("storage"); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Storage status was not changed: " + ex.Message; }
     }
+    private async Task AssignHandoverUnitAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var reservationId) || !Guid.TryParse(ActionInput.Trim(), out var storageUnitId)) { Message = "Enter a valid Storage Unit ID for this reservation."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Put, "api/v1/reservations/" + reservationId.ToString("D") + "/handover-unit-assignment", new { storageUnitId }); ActionInput = ""; Message = "Handover unit assignment saved."; await NavigateAsync("reservations"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Unit assignment failed: " + ex.Message; }
+    }
+    private async Task CompleteHandoverAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var reservationId) || !Guid.TryParse(item.EntityId, out var visitId) || !Guid.TryParse(ActionInput.Trim(), out var storageUnitId)) { Message = "This work item needs Reservation ID, Visit ID and a valid Storage Unit ID."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/reservations/" + reservationId.ToString("D") + "/complete-handover", new { visitId, storageUnitId, discountId = (Guid?)null }); ActionInput = ""; Message = "Handover completed and contract created."; await NavigateAsync("task"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Handover could not be completed: " + ex.Message; }
+    }
+    private async Task ConfirmReturnAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var visitId) || !DateOnly.TryParseExact(ActionInput.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var actualReturnDate)) { Message = "Enter actual return date as yyyy-MM-dd."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/visits/" + visitId.ToString("D") + "/confirm-return", new { actualReturnDate = actualReturnDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }); ActionInput = ""; Message = "Actual return recorded; inspection has been created."; await NavigateAsync("task"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Return confirmation failed: " + ex.Message; }
+    }
     private static JsonElement JsonField(JsonElement obj, string name) =>
         obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(name, out var value) ? value : default;
 
@@ -385,7 +409,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Category = Route == "task"
                     ? Field(obj, "workType") : Field(obj, "unitTypeMode", "unitTypeName"),
                 DateValue = Field(obj, "scheduledDate"),
-                ReferenceId = Field(obj, "referenceId"),
+                ReferenceId = Field(obj, "referenceId", "reservationId"),
                 EntityId = Field(obj, "entityId"),
                 WorkType = Field(obj, "workType")
             },
