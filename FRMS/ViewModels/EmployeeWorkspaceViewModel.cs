@@ -18,6 +18,10 @@ public sealed class EmployeeWorkItem : ObservableObject
     public string InspectionNote { get => _inspectionNote; set => SetProperty(ref _inspectionNote, value); }
     public bool IsInspection => WorkType == "INSPECTION";
     public bool IsVisit => WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT";
+    public bool CanCheckIn => IsVisit && Status == "SCHEDULED";
+    public bool CanCheckOut => IsVisit && Status == "CHECKED_IN";
+    public bool CanCompleteHandover => WorkType == "RESERVATION_VISIT" && Status == "CHECKED_IN";
+    public bool CanConfirmReturn => WorkType == "RETURN_VISIT" && Status == "CHECKED_IN";
     public string Title { get; init; } = "";
     public string Subtitle { get; init; } = "";
     public string Status { get; init; } = "";
@@ -137,6 +141,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
              (DateTime.TryParse(x.DateValue, out var date) && date.Date == SelectedDate.Value.Date)));
         Items.Clear();
         foreach (var item in result) Items.Add(item);
+        if (Route is "task" or "access")
+            Message = SelectedDate.HasValue
+                ? $"{Items.Count} record(s) for {SelectedDate.Value:dd/MM/yyyy} (date filter)."
+                : $"{Items.Count} record(s) shown across all dates.";
     }
 
     public IAsyncRelayCommand<string> NavigateCommand { get; }
@@ -357,7 +365,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 ? (Route == "task" ? "No work items found in the available history." :
                    Route == "access" ? "No customer visits found in the available history." : "No records found.")
                 : $"{Items.Count} of {records.Count} record(s) shown." +
-                  (historyTruncated ? " Showing the latest 1,000 records; narrow the date filter or consult the backend for older history." : "");
+                  (historyTruncated ? " Only the first 1,000 records are loaded. Older records require server-side pagination." : "");
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
