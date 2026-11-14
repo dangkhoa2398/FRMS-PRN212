@@ -184,17 +184,19 @@ public sealed class MainViewModel : ObservableObject
         if (facility is null || !Guid.TryParse(facility.FacilityId, out _)) return;
         var page = CurrentPage;
         page.ReservationFacilityId = facility.FacilityId;
-        page.ReservationFacilityName = facility.Title;
+        page.ReservationFacilityName = string.IsNullOrWhiteSpace(facility.FacilityName) ? facility.Title : facility.FacilityName;
         page.SelectedUnitTypeId = "";
         page.UnitTypes.Clear();
         await LoadUnitTypesAsync(page);
+        if (!string.IsNullOrWhiteSpace(facility.UnitTypeId) && page.UnitTypes.Any(x => x.UnitTypeId == facility.UnitTypeId))
+            page.SelectedUnitTypeId = facility.UnitTypeId;
     }
 
     private async Task LoadUnitTypesAsync(CustomerPageViewModel page)
     {
         if (!Guid.TryParse(page.ReservationFacilityId, out var facilityId))
         {
-            page.Message = "Select a facility from the search results first.";
+            page.Message = "Select a storage type from the results first.";
             return;
         }
         if (!DateOnly.TryParseExact(page.ReservationStartMonth, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start) ||
@@ -247,7 +249,7 @@ public sealed class MainViewModel : ObservableObject
         if (!Guid.TryParse(page.ReservationFacilityId.Trim(), out var facilityId) ||
             !Guid.TryParse(page.ReservationUnitTypeId.Trim(), out var unitTypeId))
         {
-            page.Message = "Choose a facility and one of its available Unit Types from the lists.";
+            page.Message = "Choose an available storage type first.";
             return;
         }
         if (!DateOnly.TryParseExact(page.ReservationStartMonth, "yyyy-MM", CultureInfo.InvariantCulture,
@@ -281,7 +283,7 @@ public sealed class MainViewModel : ObservableObject
         var page = CurrentPage;
         if (!Guid.TryParse(page.TicketContractId.Trim(), out var contractId))
         {
-            page.Message = "Enter a valid Contract ID from My Contracts.";
+            page.Message = "Choose a contract from the list.";
             return;
         }
         if (string.IsNullOrWhiteSpace(page.TicketDescription) || page.TicketDescription.Trim().Length > 1000)
@@ -379,7 +381,7 @@ public sealed class MainViewModel : ObservableObject
         CurrentPage = page;
         if (route == "storage" && !runStorageSearch)
         {
-            page.Message = "Enter a facility or location, then click Find Storage.";
+            page.Message = "Select storage size, type and rental months, then click Find Storage.";
             if (ReferenceEquals(_navigationCts, cts)) _navigationCts = null;
             cts.Dispose();
             return;
@@ -412,8 +414,14 @@ public sealed class MainViewModel : ObservableObject
                 var name = Field(profile, "fullName", "name");
                 if (!string.IsNullOrWhiteSpace(name)) CustomerName = name;
             }
+            if (route == "storage")
+                records = await ExpandStorageTypesAsync(records, page, cts.Token);
             if (route == "reservations" || route == "invoices")
                 await EnrichStorageAsync(records, route, cts.Token);
+            if (route == "reservations")
+                await EnrichFacilityNamesAsync(records, cts.Token);
+            if (route == "support")
+                await LoadTicketContractsAsync(page, cts.Token);
             if (cts.IsCancellationRequested || !ReferenceEquals(CurrentPage, page) || !IsAuthenticated) return;
             page.SetRecords(records);
             if (route == "contracts" && !string.IsNullOrEmpty(page.ContractFilter))
@@ -504,6 +512,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 Title = Field(element, "name", "facilityName"),
                 Subtitle = Field(element, "address", "location"),
+                FacilityName = Field(element, "name", "facilityName"),
                 Status = status,
                 Detail1 = Field(element, "description"),
                 Detail2 = "Contact: " + Field(element, "contactInfo"),
@@ -529,7 +538,7 @@ public sealed class MainViewModel : ObservableObject
                 Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
                 Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
                 Detail3 = "Start: " + DateLabel(Field(element, "startMonth")),
-                Detail4 = "End: " + DateLabel(Field(element, "endMonth")) + " | Contract ID: " + contractId,
+                Detail4 = "End: " + DateLabel(Field(element, "endMonth")),
                 ContractId = contractId
             },
             "invoices" => new CustomerRecord
@@ -561,7 +570,9 @@ public sealed class MainViewModel : ObservableObject
                 Detail2 = "Period: " + DateLabel(Field(element, "startMonth")) + " – " + DateLabel(Field(element, "endMonth")),
                 Detail3 = "Deposit: " + Money(Field(element, "depositAmount", "lockedDepositAmount")),
                 UnitType = Field(element, "unitTypeName", "unitTypeMode") is var typeName && !string.IsNullOrWhiteSpace(typeName) ? typeName : "Type " + ShortId(Field(element, "unitTypeId")),
-                UnitTypeId = Field(element, "unitTypeId")
+                UnitTypeId = Field(element, "unitTypeId"),
+                FacilityId = Field(element, "facilityId"),
+                FacilityName = Field(element, "facilityName")
             },
             _ => new CustomerRecord { Title = "Record", Status = status }
         };
@@ -633,6 +644,123 @@ public sealed class MainViewModel : ObservableObject
                 catch (HttpRequestException) { /* Keep base invoice data when detail is unavailable. */ }
                 catch (JsonException) { /* Malformed optional detail does not hide the invoice. */ }
             }
+        }
+    }
+
+
+    // Search results represent bookable Unit Types, not physical unit assignments.
+    // A physical storage unit is selected by the Manager during handover.
+    private async Task<List<CustomerRecord>> ExpandStorageTypesAsync(
+        List<CustomerRecord> facilities, CustomerPageViewModel page, CancellationToken token)
+    {
+        var result = new List<CustomerRecord>();
+        var start = page.StartMonth?.ToString("yyyy-MM", CultureInfo.InvariantCulture)
+            ?? page.ReservationStartMonth;
+        var end = page.EndMonth?.ToString("yyyy-MM", CultureInfo.InvariantCulture)
+            ?? page.ReservationEndMonth;
+        page.ReservationStartMonth = start;
+        page.ReservationEndMonth = end;
+        foreach (var facility in facilities)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!Guid.TryParse(facility.FacilityId, out var facilityId)) continue;
+            try
+            {
+                var q = "startMonth=" + Uri.EscapeDataString(start) +
+                    "&endMonth=" + Uri.EscapeDataString(end) +
+                    "&availableOnly=true&page=1&pageSize=100";
+                if (page.StorageMode is "PRIVATE" or "PUBLIC")
+                    q += "&mode=" + Uri.EscapeDataString(page.StorageMode);
+                if (!string.IsNullOrWhiteSpace(page.StorageSize))
+                    q += "&size=" + Uri.EscapeDataString(page.StorageSize.Trim());
+                using var doc = await _api.GetAsync(
+                    $"api/v1/facilities/{facilityId:D}/unit-types?{q}", token);
+                var data = Property(doc.RootElement, "data");
+                if (data.ValueKind == JsonValueKind.Object)
+                {
+                    var items = Property(data, "items", "data");
+                    if (items.ValueKind != JsonValueKind.Undefined) data = items;
+                }
+                if (data.ValueKind != JsonValueKind.Array) continue;
+                foreach (var item in data.EnumerateArray())
+                {
+                    var id = Field(item, "unitTypeId");
+                    if (!Guid.TryParse(id, out _)) continue;
+                    var name = Field(item, "name", "unitTypeName");
+                    var mode = Field(item, "mode");
+                    var size = Field(item, "size");
+                    result.Add(new CustomerRecord {
+                        Title = string.IsNullOrWhiteSpace(name) ? "Storage " + size : name,
+                        Subtitle = facility.Title + " | " + facility.Subtitle,
+                        FacilityName = facility.Title,
+                        FacilityId = facility.FacilityId,
+                        UnitTypeId = id,
+                        UnitType = name,
+                        Status = "AVAILABLE",
+                        Detail1 = "Size: " + size + " | Type: " + mode,
+                        Detail2 = "Rental: " + Money(Field(item, "rentalPrice")),
+                        Detail3 = "Unit Type: " + ShortId(id)
+                    });
+                }
+            }
+            catch (HttpRequestException) { /* An unavailable facility does not hide the others. */ }
+            catch (JsonException) { /* Ignore malformed optional catalog entries. */ }
+        }
+        return result;
+    }
+
+    private async Task LoadTicketContractsAsync(CustomerPageViewModel page, CancellationToken token)
+    {
+        page.TicketContracts.Clear();
+        try
+        {
+            using var doc = await _api.GetAsync("api/v1/contracts?page=1&pageSize=100", token);
+            var data = Property(doc.RootElement, "data");
+            if (data.ValueKind == JsonValueKind.Object)
+            {
+                var items = Property(data, "items", "data");
+                if (items.ValueKind != JsonValueKind.Undefined) data = items;
+            }
+            if (data.ValueKind != JsonValueKind.Array) return;
+            foreach (var item in data.EnumerateArray())
+            {
+                var id = Field(item, "contractId");
+                if (!Guid.TryParse(id, out _)) continue;
+                var unit = Field(item, "unitCode", "storageUnitCode");
+                var facility = Field(item, "facilityName");
+                var type = Field(item, "unitTypeName", "unitTypeMode");
+                var label = string.Join(" | ", new[] {
+                    string.IsNullOrWhiteSpace(unit) ? "Contract " + ShortId(id) : "Unit " + unit,
+                    facility, type }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                page.TicketContracts.Add(new CustomerContractOption { ContractId = id, DisplayName = label });
+            }
+            if (page.TicketContracts.Count == 1)
+                page.TicketContractId = page.TicketContracts[0].ContractId;
+        }
+        catch (HttpRequestException ex) { page.Message = "Cannot load your contracts: " + ex.Message; }
+        catch (JsonException ex) { page.Message = "Invalid contract list: " + ex.Message; }
+    }
+
+    private async Task EnrichFacilityNamesAsync(List<CustomerRecord> records, CancellationToken token)
+    {
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var record in records)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!string.IsNullOrWhiteSpace(record.FacilityName) ||
+                !Guid.TryParse(record.FacilityId, out var facilityId)) continue;
+            if (!names.TryGetValue(record.FacilityId, out var name))
+            {
+                try
+                {
+                    using var doc = await _api.GetAsync($"api/v1/facilities/{facilityId:D}", token);
+                    name = Field(Property(doc.RootElement, "data"), "name", "facilityName");
+                }
+                catch (HttpRequestException) { name = ""; }
+                catch (JsonException) { name = ""; }
+                names[record.FacilityId] = name;
+            }
+            record.FacilityName = string.IsNullOrWhiteSpace(name) ? "Facility " + ShortId(record.FacilityId) : name;
         }
     }
 
