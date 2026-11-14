@@ -239,11 +239,11 @@
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
                             <TextBlock Text="Find available storage" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Search storage types by size, privacy and rental period. Select a result to pre-fill your reservation." Style="{StaticResource Subtle}" Margin="0,8,0,16"/>
+                            <TextBlock Text="Choose a facility, then filter its available storage types by size, privacy and rental period." Style="{StaticResource Subtle}" Margin="0,8,0,16"/>
                             <UniformGrid Columns="3">
                                 <StackPanel Margin="0,0,14,14">
-                                    <TextBlock Text="Optional facility / location" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding FacilityQuery, UpdateSourceTrigger=PropertyChanged}" Height="38" Padding="10,7" Margin="0,7,0,0"/>
+                                    <TextBlock Text="Facility (required)" Style="{StaticResource Subtle}"/>
+                                    <ComboBox ItemsSource="{Binding FacilityOptions}" DisplayMemberPath="DisplayName" SelectedValuePath="FacilityId" SelectedValue="{Binding SelectedFacilityId, Mode=TwoWay}" Height="38" Margin="0,7,0,0" ToolTip="Select a facility before searching storage types"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
                                     <TextBlock Text="Storage Type" Style="{StaticResource Subtle}"/>
