@@ -50,7 +50,7 @@
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,3"/>
-                    <Button Content="Select this facility" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                    <Button Content="Select this facility" HorizontalAlignment="Left" Margin="0,12,0,0"
                             Command="{Binding DataContext.SelectFacilityCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{Binding}">
                         <Button.Style>
@@ -346,7 +346,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Style="{StaticResource Panel}">
+                    <Border>
                         <Border.Style>
                             <Style TargetType="Border" BasedOn="{StaticResource Panel}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
