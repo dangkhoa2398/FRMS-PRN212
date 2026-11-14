@@ -19,6 +19,7 @@ public sealed class CustomerRecord : ObservableObject
     public string UnitType { get; set; } = "";
     public string UnitTypeId { get; init; } = "";
     public string FacilityId { get; init; } = "";
+    public string FacilityName { get; set; } = "";
     public string RelatedEntityId { get; init; } = "";
     public string RelatedStorage { get; set; } = "";
     public string ContractId { get; init; } = "";
@@ -31,6 +32,12 @@ public sealed class CustomerRecord : ObservableObject
 public sealed class CustomerUnitTypeOption
 {
     public string UnitTypeId { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+}
+
+public sealed class CustomerContractOption
+{
+    public string ContractId { get; init; } = "";
     public string DisplayName { get; init; } = "";
 }
 
@@ -68,6 +75,7 @@ public sealed class CustomerPageViewModel : ObservableObject
     public string ReservationStartMonth { get => _reservationStartMonth; set => SetProperty(ref _reservationStartMonth, value); }
     private string _reservationEndMonth = DateTime.Today.AddMonths(2).ToString("yyyy-MM");
     public string ReservationEndMonth { get => _reservationEndMonth; set => SetProperty(ref _reservationEndMonth, value); }
+    public ObservableCollection<CustomerContractOption> TicketContracts { get; } = new();
     private string _ticketContractId = "";
     public string TicketContractId { get => _ticketContractId; set => SetProperty(ref _ticketContractId, value); }
     private string _ticketCategory = "OTHER";
@@ -82,9 +90,9 @@ public sealed class CustomerPageViewModel : ObservableObject
     public string[] StorageModes { get; } = { "All", "PRIVATE", "PUBLIC" };
     private string _storageSize = "";
     public string StorageSize { get => _storageSize; set => SetProperty(ref _storageSize, value); }
-    private DateTime? _startMonth;
+    private DateTime? _startMonth = new DateTime(DateTime.Today.AddMonths(1).Year, DateTime.Today.AddMonths(1).Month, 1);
     public DateTime? StartMonth { get => _startMonth; set => SetProperty(ref _startMonth, value); }
-    private DateTime? _endMonth;
+    private DateTime? _endMonth = new DateTime(DateTime.Today.AddMonths(2).Year, DateTime.Today.AddMonths(2).Month, 1);
     public DateTime? EndMonth { get => _endMonth; set => SetProperty(ref _endMonth, value); }
 
     private bool _hasSearched;
@@ -141,7 +149,7 @@ public sealed class CustomerPageViewModel : ObservableObject
             (string.IsNullOrWhiteSpace(ContractFilter) || x.ContractId.Equals(ContractFilter, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(Search) ||
              (x.Title + " " + x.Subtitle + " " + x.Status + " " + x.Detail1 + " " +
-              x.Detail2 + " " + x.Detail3 + " " + x.Detail4 + " " + x.Content)
+              x.Detail2 + " " + x.Detail3 + " " + x.Detail4 + " " + x.Content + " " + x.FacilityName)
              .Contains(Search.Trim(), StringComparison.OrdinalIgnoreCase)));
         VisibleRecords.Clear();
         foreach (var item in query) VisibleRecords.Add(item);
