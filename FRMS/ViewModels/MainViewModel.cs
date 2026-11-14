@@ -162,7 +162,7 @@ public sealed class MainViewModel : ObservableObject
             values.Add("location=" + Uri.EscapeDataString(page.FacilityQuery.Trim()));
         if (page.StorageMode is "PRIVATE" or "PUBLIC")
             values.Add("mode=" + Uri.EscapeDataString(page.StorageMode));
-        if (!string.IsNullOrWhiteSpace(page.StorageSize))
+        if (!string.IsNullOrWhiteSpace(page.StorageSize) && page.StorageSize != "All")
             values.Add("size=" + Uri.EscapeDataString(page.StorageSize.Trim()));
         if (page.StartMonth.HasValue)
         {
@@ -671,7 +671,7 @@ public sealed class MainViewModel : ObservableObject
                     "&availableOnly=true&page=1&pageSize=100";
                 if (page.StorageMode is "PRIVATE" or "PUBLIC")
                     q += "&mode=" + Uri.EscapeDataString(page.StorageMode);
-                if (!string.IsNullOrWhiteSpace(page.StorageSize))
+                if (!string.IsNullOrWhiteSpace(page.StorageSize) && page.StorageSize != "All")
                     q += "&size=" + Uri.EscapeDataString(page.StorageSize.Trim());
                 using var doc = await _api.GetAsync(
                     $"api/v1/facilities/{facilityId:D}/unit-types?{q}", token);
