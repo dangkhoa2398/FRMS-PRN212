@@ -327,8 +327,11 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="230"/></Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal">
                             <StackPanel><TextBlock Text="Filter by Status" Style="{StaticResource Subtle}" Margin="0,0,0,5"/><ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="190" Height="38"/></StackPanel>
+<StackPanel Margin="12,0,0,0">
+                                <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsReservations}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                                <TextBlock Text="Filter by Storage Type" Style="{StaticResource Subtle}" Margin="0,0,0,5"/>
                                 <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="200" ToolTip="Filter by Storage Type"
-                                          Height="38" Margin="12,0,0,0">
+                                          Height="38" Margin="0,0,0,0">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -340,6 +343,7 @@
                                         </Style>
                                     </ComboBox.Style>
                                 </ComboBox>
+                            </StackPanel>
                             </StackPanel>
                             <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by unit, facility, type or status"
                                      Height="38" Padding="10,8"/>
