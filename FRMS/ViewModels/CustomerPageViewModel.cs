@@ -47,6 +47,21 @@ public sealed class CustomerPageViewModel : ObservableObject
     public bool IsInvoices => Route == "invoices";
     public bool IsSupport => Route == "support";
 
+    private string _reservationFacilityId = "";
+    public string ReservationFacilityId { get => _reservationFacilityId; set => SetProperty(ref _reservationFacilityId, value); }
+    private string _reservationUnitTypeId = "";
+    public string ReservationUnitTypeId { get => _reservationUnitTypeId; set => SetProperty(ref _reservationUnitTypeId, value); }
+    private string _reservationStartMonth = DateTime.Today.AddMonths(1).ToString("yyyy-MM");
+    public string ReservationStartMonth { get => _reservationStartMonth; set => SetProperty(ref _reservationStartMonth, value); }
+    private string _reservationEndMonth = DateTime.Today.AddMonths(2).ToString("yyyy-MM");
+    public string ReservationEndMonth { get => _reservationEndMonth; set => SetProperty(ref _reservationEndMonth, value); }
+    private string _ticketContractId = "";
+    public string TicketContractId { get => _ticketContractId; set => SetProperty(ref _ticketContractId, value); }
+    private string _ticketCategory = "OTHER";
+    public string TicketCategory { get => _ticketCategory; set => SetProperty(ref _ticketCategory, value); }
+    public string[] TicketCategories { get; } = { "UNIT_ISSUE", "LOCK_KEY_ISSUE", "ACCESS_CARD_CODE_ISSUE", "PAYMENT_ISSUE", "STORED_ITEM_ISSUE", "DAMAGE_ISSUE", "OTHER" };
+    private string _ticketDescription = "";
+    public string TicketDescription { get => _ticketDescription; set => SetProperty(ref _ticketDescription, value); }
     private string _facilityQuery = "";
     public string FacilityQuery { get => _facilityQuery; set => SetProperty(ref _facilityQuery, value); }
     private string _storageMode = "All";
