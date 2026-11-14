@@ -33,6 +33,7 @@ public sealed class MainViewModel : ObservableObject
         OpenContractCommand = new AsyncRelayCommand<CustomerRecord>(OpenContractAsync);
         CreateVisitCommand = new AsyncRelayCommand<CustomerRecord>(CreateVisitAsync);
         CreateReservationCommand = new AsyncRelayCommand(CreateReservationAsync);
+        LoadUnitTypesCommand = new AsyncRelayCommand(LoadUnitTypesAsync);
         CreateSupportTicketCommand = new AsyncRelayCommand(CreateSupportTicketAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
@@ -73,6 +74,7 @@ public sealed class MainViewModel : ObservableObject
     public IAsyncRelayCommand<CustomerRecord> OpenContractCommand { get; }
     public IAsyncRelayCommand<CustomerRecord> CreateVisitCommand { get; }
     public IAsyncRelayCommand CreateReservationCommand { get; }
+    public IAsyncRelayCommand LoadUnitTypesCommand { get; }
     public IAsyncRelayCommand CreateSupportTicketCommand { get; }
     public IAsyncRelayCommand CheckConnectionCommand { get; }
 
@@ -176,6 +178,37 @@ public sealed class MainViewModel : ObservableObject
         await LoadPageAsync("contracts", false);
     }
 
+    private async Task LoadUnitTypesAsync()
+    {
+        var page = CurrentPage;
+        if (!Guid.TryParse(page.ReservationFacilityId.Trim(), out var facilityId)) { page.Message = "Enter a valid Facility ID first."; return; }
+        page.IsLoading = true;
+        try
+        {
+            using var json = await _api.GetAsync("api/v1/facilities/" + facilityId.ToString("D") + "/unit-types?page=1&pageSize=100");
+            var data = Property(json.RootElement, "data");
+            page.UnitTypes.Clear();
+            if (data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in data.EnumerateArray())
+                {
+                    var id = Field(item, "unitTypeId");
+                    if (Guid.TryParse(id, out _))
+                    {
+                        var name = Field(item, "name");
+                        var mode = Field(item, "mode");
+                        var size = Field(item, "size");
+                        var price = Money(Field(item, "rentalPrice"));
+                        page.UnitTypes.Add(new CustomerUnitTypeOption { UnitTypeId = id, DisplayName = string.Join(" | ", new[] { name, mode, size, price }.Where(x => !string.IsNullOrWhiteSpace(x))) });
+                    }
+                }
+            }
+            page.Message = page.UnitTypes.Count == 0 ? "No Unit Types are available for this facility and selected period." : page.UnitTypes.Count + " Unit Type option(s) loaded.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        { page.Message = "Could not load Unit Types: " + ex.Message; }
+        finally { page.IsLoading = false; }
+    }
     private async Task CreateReservationAsync()
     {
         var page = CurrentPage;
