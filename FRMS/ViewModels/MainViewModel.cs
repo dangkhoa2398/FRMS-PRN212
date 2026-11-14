@@ -33,7 +33,7 @@ public sealed class MainViewModel : ObservableObject
         OpenContractCommand = new AsyncRelayCommand<CustomerRecord>(OpenContractAsync);
         CreateVisitCommand = new AsyncRelayCommand<CustomerRecord>(CreateVisitAsync);
         CreateReservationCommand = new AsyncRelayCommand(CreateReservationAsync);
-        LoadUnitTypesCommand = new AsyncRelayCommand(LoadUnitTypesAsync);
+        SelectFacilityCommand = new AsyncRelayCommand<CustomerRecord>(SelectFacilityAsync);
         CreateSupportTicketCommand = new AsyncRelayCommand(CreateSupportTicketAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
     }
@@ -74,7 +74,7 @@ public sealed class MainViewModel : ObservableObject
     public IAsyncRelayCommand<CustomerRecord> OpenContractCommand { get; }
     public IAsyncRelayCommand<CustomerRecord> CreateVisitCommand { get; }
     public IAsyncRelayCommand CreateReservationCommand { get; }
-    public IAsyncRelayCommand LoadUnitTypesCommand { get; }
+    public IAsyncRelayCommand<CustomerRecord> SelectFacilityCommand { get; }
     public IAsyncRelayCommand CreateSupportTicketCommand { get; }
     public IAsyncRelayCommand CheckConnectionCommand { get; }
 
@@ -178,44 +178,75 @@ public sealed class MainViewModel : ObservableObject
         await LoadPageAsync("contracts", false);
     }
 
-    private async Task LoadUnitTypesAsync()
+    private async Task SelectFacilityAsync(CustomerRecord? facility)
     {
+        if (facility is null || !Guid.TryParse(facility.FacilityId, out _)) return;
         var page = CurrentPage;
-        if (!Guid.TryParse(page.ReservationFacilityId.Trim(), out var facilityId)) { page.Message = "Enter a valid Facility ID first."; return; }
+        page.ReservationFacilityId = facility.FacilityId;
+        page.ReservationFacilityName = facility.Title;
+        page.SelectedUnitTypeId = "";
+        page.UnitTypes.Clear();
+        await LoadUnitTypesAsync(page);
+    }
+
+    private async Task LoadUnitTypesAsync(CustomerPageViewModel page)
+    {
+        if (!Guid.TryParse(page.ReservationFacilityId, out var facilityId))
+        {
+            page.Message = "Select a facility from the search results first.";
+            return;
+        }
+        if (!DateOnly.TryParseExact(page.ReservationStartMonth, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start) ||
+            !DateOnly.TryParseExact(page.ReservationEndMonth, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end) || end < start)
+        {
+            page.Message = "Select a valid rental period before choosing a facility.";
+            return;
+        }
         page.IsLoading = true;
+        page.Message = "Loading available Unit Types for the selected facility and rental period...";
         try
         {
-            using var json = await _api.GetAsync("api/v1/facilities/" + facilityId.ToString("D") + "/unit-types?page=1&pageSize=100");
+            var query = "startMonth=" + Uri.EscapeDataString(start.ToString("yyyy-MM", CultureInfo.InvariantCulture)) +
+                        "&endMonth=" + Uri.EscapeDataString(end.ToString("yyyy-MM", CultureInfo.InvariantCulture)) +
+                        "&page=1&pageSize=100";
+            using var json = await _api.GetAsync("api/v1/facilities/" + facilityId.ToString("D") + "/unit-types?" + query);
             var data = Property(json.RootElement, "data");
+            if (data.ValueKind == JsonValueKind.Object)
+            {
+                var nested = Property(data, "items", "data");
+                if (nested.ValueKind != JsonValueKind.Undefined) data = nested;
+            }
             page.UnitTypes.Clear();
             if (data.ValueKind == JsonValueKind.Array)
             {
                 foreach (var item in data.EnumerateArray())
                 {
                     var id = Field(item, "unitTypeId");
-                    if (Guid.TryParse(id, out _))
-                    {
-                        var name = Field(item, "name");
-                        var mode = Field(item, "mode");
-                        var size = Field(item, "size");
-                        var price = Money(Field(item, "rentalPrice"));
-                        page.UnitTypes.Add(new CustomerUnitTypeOption { UnitTypeId = id, DisplayName = string.Join(" | ", new[] { name, mode, size, price }.Where(x => !string.IsNullOrWhiteSpace(x))) });
-                    }
+                    if (!Guid.TryParse(id, out _)) continue;
+                    var name = Field(item, "name", "unitTypeName");
+                    var mode = Field(item, "mode");
+                    var size = Field(item, "size");
+                    var price = Money(Field(item, "rentalPrice"));
+                    var label = string.Join(" | ", new[] { name, mode, size, price }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    page.UnitTypes.Add(new CustomerUnitTypeOption { UnitTypeId = id, DisplayName = string.IsNullOrWhiteSpace(label) ? "Unit Type " + ShortId(id) : label });
                 }
             }
-            page.Message = page.UnitTypes.Count == 0 ? "No Unit Types are available for this facility and selected period." : page.UnitTypes.Count + " Unit Type option(s) loaded.";
+            page.Message = page.UnitTypes.Count == 0 ? "No Unit Types are available for this facility and selected rental period." : page.UnitTypes.Count + " available Unit Type option(s).";
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
-        { page.Message = "Could not load Unit Types: " + ex.Message; }
+        {
+            page.Message = "Could not load Unit Types: " + ex.Message;
+        }
         finally { page.IsLoading = false; }
     }
+
     private async Task CreateReservationAsync()
     {
         var page = CurrentPage;
         if (!Guid.TryParse(page.ReservationFacilityId.Trim(), out var facilityId) ||
             !Guid.TryParse(page.ReservationUnitTypeId.Trim(), out var unitTypeId))
         {
-            page.Message = "Enter valid Facility ID and Unit Type ID from the search results.";
+            page.Message = "Choose a facility and one of its available Unit Types from the lists.";
             return;
         }
         if (!DateOnly.TryParseExact(page.ReservationStartMonth, "yyyy-MM", CultureInfo.InvariantCulture,
@@ -289,7 +320,10 @@ public sealed class MainViewModel : ObservableObject
         {
             await _api.CreateAccessVisitAsync(contractId, record.VisitDate.Value.Date);
             if (ReferenceEquals(CurrentPage, page))
+            {
                 page.Message = "Access visit created successfully.";
+                await LoadPageAsync("access", false);
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -313,6 +347,7 @@ public sealed class MainViewModel : ObservableObject
             "storage" => ("Find Storage", "Search facilities and available storage space", "api/v1/facilities?page=1&pageSize=20"),
             "reservations" => ("My Reservations", "Your booked storage types and rental dates", "api/v1/reservations?page=1&pageSize=20"),
             "contracts" => ("My Contracts", "Your rental units and visits", "api/v1/contracts?page=1&pageSize=20"),
+            "access" => ("Ra / Vào", "Choose an active contract and schedule an access visit", "api/v1/contracts?page=1&pageSize=100"),
             "invoices" => ("Invoices", "Billing and payment information", "api/v1/invoices?page=1&pageSize=20"),
             "support" => ("Support Requests", "Your requests and assigned support", "api/v1/support-tickets?page=1&pageSize=20"),
             _ => ("Home", "Your account overview", "api/v1/auth/me")
@@ -468,6 +503,17 @@ public sealed class MainViewModel : ObservableObject
                 Detail1 = Field(element, "description"),
                 Detail2 = "Contact: " + Field(element, "contactInfo"),
                 Detail3 = "Facility ID: " + Field(element, "facilityId")
+            },
+            "access" => new CustomerRecord
+            {
+                Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
+                Subtitle = "Contract: " + ShortId(contractId),
+                Status = status,
+                Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
+                Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
+                Detail3 = "Rental period: " + DateLabel(Field(element, "startMonth")) + " – " + DateLabel(Field(element, "endMonth")),
+                Detail4 = "Contract ID: " + contractId,
+                ContractId = contractId
             },
             "contracts" => new CustomerRecord
             {
