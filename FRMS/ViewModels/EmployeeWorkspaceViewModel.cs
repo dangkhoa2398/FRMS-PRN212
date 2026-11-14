@@ -298,6 +298,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             if (data.ValueKind == JsonValueKind.Array)
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
+            if (Route == "access") records = records.Where(x => x.WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT").ToList();
             UpdateFilters(records);
             Message = records.Count == 0
                 ? (Route == "task" ? $"No tasks found for {TaskDate:dd/MM/yyyy}." : "No records found.")
@@ -356,7 +357,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     }
     private async Task CompleteHandoverAsync(EmployeeWorkItem? item)
     {
-        if (item is null || !Guid.TryParse(item.ReferenceId, out var reservationId) || !Guid.TryParse(item.EntityId, out var visitId) || !Guid.TryParse(ActionInput.Trim(), out var storageUnitId)) { Message = "This work item needs Reservation ID, Visit ID and a valid Storage Unit ID."; return; }
+        if (item is null || !Guid.TryParse(item.EntityId, out var reservationId) || !Guid.TryParse(item.ReferenceId, out var visitId) || !Guid.TryParse(ActionInput.Trim(), out var storageUnitId)) { Message = "This reservation visit needs its linked Reservation ID and a valid Storage Unit ID."; return; }
         try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/reservations/" + reservationId.ToString("D") + "/complete-handover", new { visitId, storageUnitId, discountId = (Guid?)null }); ActionInput = ""; Message = "Handover completed and contract created."; await NavigateAsync("task"); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Handover could not be completed: " + ex.Message; }
     }
