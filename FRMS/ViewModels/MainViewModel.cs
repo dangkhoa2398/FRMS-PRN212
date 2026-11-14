@@ -157,19 +157,14 @@ public sealed class MainViewModel : ObservableObject
                 return;
             }
         }
-        var values = new List<string> { "page=1", "pageSize=20" };
-        if (!string.IsNullOrWhiteSpace(page.FacilityQuery))
-            values.Add("location=" + Uri.EscapeDataString(page.FacilityQuery.Trim()));
-        if (page.StorageMode is "PRIVATE" or "PUBLIC")
-            values.Add("mode=" + Uri.EscapeDataString(page.StorageMode));
-        if (!string.IsNullOrWhiteSpace(page.StorageSize) && page.StorageSize != "All")
-            values.Add("size=" + Uri.EscapeDataString(page.StorageSize.Trim()));
-        if (page.StartMonth.HasValue)
+        if (!Guid.TryParse(page.SelectedFacilityId, out var facilityId))
         {
-            values.Add("startMonth=" + page.StartMonth.Value.ToString("yyyy-MM", CultureInfo.InvariantCulture));
-            values.Add("endMonth=" + page.EndMonth!.Value.ToString("yyyy-MM", CultureInfo.InvariantCulture));
+            page.Message = "Please choose a Facility before searching for storage.";
+            return;
         }
-        await LoadPageAsync("storage", true, string.Join("&", values), page);
+        // Query the selected Facility directly. Apply size, mode and period only at
+        // its Unit Type catalog to avoid filtering out the Facility prematurely.
+        await LoadPageAsync("storage", true, facilityId.ToString("D"), page);
     }
 
     private async Task OpenContractAsync(CustomerRecord? record)
@@ -369,7 +364,7 @@ public sealed class MainViewModel : ObservableObject
         }
         if (route == "storage" && runStorageSearch)
         {
-            path = "api/v1/facilities?" + (storageQuery ?? "page=1&pageSize=20");
+            path = "api/v1/facilities/" + storageQuery;
             page.HasSearched = true;
             page.Search = "";
             page.SetRecords(Array.Empty<CustomerRecord>());
@@ -381,9 +376,25 @@ public sealed class MainViewModel : ObservableObject
         CurrentPage = page;
         if (route == "storage" && !runStorageSearch)
         {
-            page.Message = "Select storage size, type and rental months, then click Find Storage.";
-            if (ReferenceEquals(_navigationCts, cts)) _navigationCts = null;
-            cts.Dispose();
+            page.IsLoading = true;
+            try
+            {
+                await LoadFacilityOptionsAsync(page, cts.Token);
+                page.Message = page.FacilityOptions.Count == 0
+                    ? "No active facilities found. Check backend catalog or try Refresh."
+                    : "Choose a facility, size and rental period, then click Find Storage.";
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+            {
+                page.Message = "Cannot load Facilities: " + ex.Message;
+            }
+            finally
+            {
+                page.IsLoading = false;
+                if (ReferenceEquals(_navigationCts, cts)) _navigationCts = null;
+                cts.Dispose();
+            }
             return;
         }
 
@@ -648,6 +659,43 @@ public sealed class MainViewModel : ObservableObject
     }
 
 
+    private async Task LoadFacilityOptionsAsync(CustomerPageViewModel page, CancellationToken token)
+    {
+        var previous = page.SelectedFacilityId;
+        page.FacilityOptions.Clear();
+        // Facility catalog is paginated. Load all active facilities instead of only page 1.
+        for (var pageNumber = 1; pageNumber <= 50; pageNumber++)
+        {
+            token.ThrowIfCancellationRequested();
+            using var doc = await _api.GetAsync(
+                $"api/v1/facilities?page={pageNumber}&pageSize=100", token);
+            var data = Property(doc.RootElement, "data");
+            if (data.ValueKind == JsonValueKind.Object)
+            {
+                var inner = Property(data, "items", "data");
+                if (inner.ValueKind != JsonValueKind.Undefined) data = inner;
+            }
+            if (data.ValueKind != JsonValueKind.Array || data.GetArrayLength() == 0) break;
+            foreach (var item in data.EnumerateArray())
+            {
+                var id = Field(item, "facilityId");
+                if (!Guid.TryParse(id, out _) ||
+                    page.FacilityOptions.Any(x => x.FacilityId == id)) continue;
+                var name = Field(item, "name", "facilityName");
+                var address = Field(item, "address", "location");
+                var label = string.Join(" | ", new[] { name, address }
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+                page.FacilityOptions.Add(new CustomerFacilityOption {
+                    FacilityId = id,
+                    DisplayName = string.IsNullOrWhiteSpace(label) ? "Facility " + ShortId(id) : label
+                });
+            }
+            if (data.GetArrayLength() < 100) break;
+        }
+        page.SelectedFacilityId = page.FacilityOptions.Any(x => x.FacilityId == previous)
+            ? previous : "";
+    }
+
     // Search results represent bookable Unit Types, not physical unit assignments.
     // A physical storage unit is selected by the Manager during handover.
     private async Task<List<CustomerRecord>> ExpandStorageTypesAsync(
@@ -671,8 +719,6 @@ public sealed class MainViewModel : ObservableObject
                     "&availableOnly=true&page=1&pageSize=100";
                 if (page.StorageMode is "PRIVATE" or "PUBLIC")
                     q += "&mode=" + Uri.EscapeDataString(page.StorageMode);
-                if (!string.IsNullOrWhiteSpace(page.StorageSize) && page.StorageSize != "All")
-                    q += "&size=" + Uri.EscapeDataString(page.StorageSize.Trim());
                 using var doc = await _api.GetAsync(
                     $"api/v1/facilities/{facilityId:D}/unit-types?{q}", token);
                 var data = Property(doc.RootElement, "data");
@@ -689,6 +735,8 @@ public sealed class MainViewModel : ObservableObject
                     var name = Field(item, "name", "unitTypeName");
                     var mode = Field(item, "mode");
                     var size = Field(item, "size");
+                    if (page.StorageSize != "All" &&
+                        !size.Equals(page.StorageSize, StringComparison.OrdinalIgnoreCase)) continue;
                     result.Add(new CustomerRecord {
                         Title = string.IsNullOrWhiteSpace(name) ? "Storage " + size : name,
                         Subtitle = facility.Title + " | " + facility.Subtitle,
