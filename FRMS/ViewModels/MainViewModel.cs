@@ -502,7 +502,8 @@ public sealed class MainViewModel : ObservableObject
                 Status = status,
                 Detail1 = Field(element, "description"),
                 Detail2 = "Contact: " + Field(element, "contactInfo"),
-                Detail3 = "Facility ID: " + Field(element, "facilityId")
+                Detail3 = "Facility ID: " + Field(element, "facilityId"),
+                FacilityId = Field(element, "facilityId")
             },
             "access" => new CustomerRecord
             {
