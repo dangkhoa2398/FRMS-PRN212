@@ -50,7 +50,7 @@
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,3"/>
-                    <Button Content="Select this facility" HorizontalAlignment="Left" Margin="0,12,0,0"
+                    <Button Content="Select this storage type" HorizontalAlignment="Left" Margin="0,12,0,0"
                             Command="{Binding DataContext.SelectFacilityCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{Binding}">
                         <Button.Style>
@@ -133,6 +133,7 @@
                     <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,4,0,0"/>
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,7,0,0"/>
                     <TextBlock Text="{Binding Detail3}" Foreground="#1D4ED8" FontWeight="SemiBold" Margin="0,11,0,0"/>
+                    <TextBlock Text="{Binding FacilityName}" Style="{StaticResource Subtle}" Margin="0,5,0,0"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -238,10 +239,10 @@
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
                             <TextBlock Text="Find available storage" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Choose filters and click Find Storage. Results will not appear automatically." Style="{StaticResource Subtle}" Margin="0,8,0,16"/>
+                            <TextBlock Text="Search storage types by size, privacy and rental period. Select a result to pre-fill your reservation." Style="{StaticResource Subtle}" Margin="0,8,0,16"/>
                             <UniformGrid Columns="3">
                                 <StackPanel Margin="0,0,14,14">
-                                    <TextBlock Text="Facility / Location" Style="{StaticResource Subtle}"/>
+                                    <TextBlock Text="Optional facility / location" Style="{StaticResource Subtle}"/>
                                     <TextBox Text="{Binding FacilityQuery, UpdateSourceTrigger=PropertyChanged}" Height="38" Padding="10,7" Margin="0,7,0,0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
@@ -250,7 +251,7 @@
                                               Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
-                                    <TextBlock Text="Storage Size" Style="{StaticResource Subtle}"/>
+                                    <TextBlock Text="Storage Size (Small / Medium / Large)" Style="{StaticResource Subtle}"/>
                                     <ComboBox IsEditable="True" Text="{Binding StorageSize, UpdateSourceTrigger=PropertyChanged}"
                                               Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
@@ -278,17 +279,17 @@
                                 <Setter Property="Visibility" Value="Visible"/>
                             </DataTrigger></Style.Triggers>
                         </Style></StackPanel.Style>
-                        <TextBlock Text="Facilities" Style="{StaticResource Heading}" Margin="0,6,0,12"/>
+                        <TextBlock Text="Available Storage Types" Style="{StaticResource Heading}" Margin="0,6,0,12"/>
                         <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
                     </StackPanel>
                     <Border Style="{StaticResource Panel}" Margin="0,14,0,14">
                         <StackPanel>
                             <TextBlock Text="Create Reservation" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Select a facility above. Its ID and available Unit Types will be filled in automatically."
+                            <TextBlock Text="Select a storage type above. Facility and type will be filled in automatically."
                                        Style="{StaticResource Subtle}" Margin="0,6,0,12"/>
                             <TextBlock Text="{Binding ReservationFacilityName}" FontWeight="SemiBold" Foreground="#1D4ED8" Margin="0,0,0,10"/>
-                            <TextBlock Text="Facility ID" Style="{StaticResource Subtle}"/>
-                            <TextBox Text="{Binding ReservationFacilityId}" IsReadOnly="True" Height="36" Padding="8" Margin="0,5,0,12"/>
+                            <TextBlock Text="Selected Facility" Style="{StaticResource Subtle}"/>
+                             <TextBox Text="{Binding ReservationFacilityName}" IsReadOnly="True" Height="36" Padding="8" Margin="0,5,0,12"/>
                             <UniformGrid Columns="2">
                                 <StackPanel Margin="0,0,12,10">
                                     <TextBlock Text="Available Unit Type" Style="{StaticResource Subtle}"/>
@@ -325,9 +326,8 @@
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="230"/></Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal">
-                            <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="210"
-                                      HorizontalAlignment="Left" Height="38"/>
-                                <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="200"
+                            <StackPanel><TextBlock Text="Filter by Status" Style="{StaticResource Subtle}" Margin="0,0,0,5"/><ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="190" Height="38"/></StackPanel>
+                                <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="200" ToolTip="Filter by Storage Type"
                                           Height="38" Margin="12,0,0,0">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox">
@@ -341,7 +341,7 @@
                                     </ComboBox.Style>
                                 </ComboBox>
                             </StackPanel>
-                            <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by unit, facility, type or status"
                                      Height="38" Padding="10,8"/>
                         </Grid>
                     </Border>
@@ -355,10 +355,10 @@
                         </Border.Style>
                         <StackPanel>
                             <TextBlock Text="Create Support Ticket" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="A ticket must be linked to one of your contracts. Copy its Contract ID from My Contracts."
+                            <TextBlock Text="Choose one of your contracts. You do not need to copy an ID."
                                        Style="{StaticResource Subtle}" Margin="0,6,0,12"/>
-                            <TextBlock Text="Contract ID" Style="{StaticResource Subtle}"/>
-                            <TextBox Text="{Binding TicketContractId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8" Margin="0,6,0,12"/>
+                            <TextBlock Text="Contract / Storage Unit" Style="{StaticResource Subtle}"/>
+                             <ComboBox ItemsSource="{Binding TicketContracts}" DisplayMemberPath="DisplayName" SelectedValuePath="ContractId" SelectedValue="{Binding TicketContractId, Mode=TwoWay}" Height="36" Margin="0,6,0,12"/>
                             <TextBlock Text="Category" Style="{StaticResource Subtle}"/>
                             <ComboBox ItemsSource="{Binding TicketCategories}" SelectedItem="{Binding TicketCategory}" Height="36" Margin="0,6,0,12"/>
                             <TextBlock Text="Description (max 1000 characters)" Style="{StaticResource Subtle}"/>
