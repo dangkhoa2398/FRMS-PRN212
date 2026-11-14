@@ -261,8 +261,11 @@
                                     <TextBox Text="{Binding ReservationFacilityId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,10">
-                                    <TextBlock Text="Unit Type ID" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding ReservationUnitTypeId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                    <TextBlock Text="Unit Type" Style="{StaticResource Subtle}"/>
+                                    <ComboBox ItemsSource="{Binding UnitTypes}" DisplayMemberPath="DisplayName" SelectedValuePath="UnitTypeId"
+                                              SelectedValue="{Binding SelectedUnitTypeId, Mode=TwoWay}" Height="36"/>
+                                    <Button Content="Load Unit Types" Style="{StaticResource PrimaryButton}" Margin="0,6,0,0"
+                                            Command="{Binding DataContext.LoadUnitTypesCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,10">
                                     <TextBlock Text="Start month (yyyy-MM)" Style="{StaticResource Subtle}"/>
