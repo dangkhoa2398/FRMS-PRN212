@@ -134,7 +134,7 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <TextBox Width="210" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Unit Type ID" Text="{Binding EmployeeWorkspace.NewUnitTypeId, UpdateSourceTrigger=PropertyChanged}"/>
+                    <ComboBox Width="210" Height="34" Margin="0,0,8,0" ToolTip="Select Storage Type" ItemsSource="{Binding EmployeeWorkspace.AvailableUnitTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EmployeeWorkspace.NewUnitTypeId, Mode=TwoWay}"/>
                     <TextBox Width="150" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Unit Code" Text="{Binding EmployeeWorkspace.NewUnitCode, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBox Width="220" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Location information" Text="{Binding EmployeeWorkspace.NewUnitLocation, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="Create Storage Unit" Padding="12,7" Command="{Binding EmployeeWorkspace.CreateStorageUnitCommand}"/>
@@ -208,12 +208,12 @@
                                                  Text="{Binding DataContext.EmployeeWorkspace.ActionInput, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}">
                                             <TextBox.Style><Style TargetType="TextBox"><Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
-                                                    <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="reservations"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger>
+                                                    
                                                     <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="task"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger>
                                                 </Style.Triggers>
                                             </Style></TextBox.Style>
                                         </TextBox>
-                                        <Button Content="Assign unit" Padding="10,6" Margin="0,0,8,0" Command="{Binding DataContext.EmployeeWorkspace.AssignHandoverUnitCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                        <Button Content="Auto Assign Unit" Padding="10,6" Margin="0,0,8,0" Command="{Binding DataContext.EmployeeWorkspace.AssignHandoverUnitCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
                                             <Button.Style><Style TargetType="Button"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="reservations"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger></Style.Triggers></Style></Button.Style>
                                         </Button>
                                         <Button Content="Complete handover" Padding="10,6" Margin="0,0,8,0" Command="{Binding DataContext.EmployeeWorkspace.CompleteHandoverCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
@@ -253,9 +253,8 @@
                                                 </Style.Triggers>
                                             </Style></Button.Style>
                                         </Button>
-                                        <TextBox Width="220" Height="32" Padding="6" Margin="0,0,8,0"
-                                                 Text="{Binding DataContext.EmployeeWorkspace.ActionInput, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}">
-                                            <TextBox.Style><Style TargetType="TextBox">
+                                        <ComboBox Width="220" Height="32" Margin="0,0,8,0" ToolTip="Select Facility Staff" ItemsSource="{Binding DataContext.EmployeeWorkspace.FacilityStaff, RelativeSource={RelativeSource AncestorType=Window}}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding DataContext.EmployeeWorkspace.SelectedStaffId, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                                            <ComboBox.Style><Style TargetType="ComboBox">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <MultiDataTrigger>
@@ -266,8 +265,8 @@
                                                         <Setter Property="Visibility" Value="Visible"/>
                                                     </MultiDataTrigger>
                                                 </Style.Triggers>
-                                            </Style></TextBox.Style>
-                                        </TextBox>
+                                            </Style></ComboBox.Style>
+                                        </ComboBox>
                                         <Button Content="Assign ticket" Padding="10,6" Margin="0,0,8,0"
                                                 Command="{Binding DataContext.EmployeeWorkspace.AssignTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}">
