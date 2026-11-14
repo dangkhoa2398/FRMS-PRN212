@@ -298,7 +298,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             if (data.ValueKind == JsonValueKind.Array)
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
-            if (Route == "access") records = records.Where(x => x.WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT").ToList();
+            if (Route == "access" && IsStaff) records = records.Where(x => x.WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT").ToList();
             UpdateFilters(records);
             Message = records.Count == 0
                 ? (Route == "task" ? $"No tasks found for {TaskDate:dd/MM/yyyy}." : "No records found.")
