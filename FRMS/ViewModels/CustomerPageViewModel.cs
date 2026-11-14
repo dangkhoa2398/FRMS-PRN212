@@ -27,6 +27,12 @@ public sealed class CustomerRecord : ObservableObject
     public DateTime? VisitDate { get => _visitDate; set => SetProperty(ref _visitDate, value); }
 }
 
+public sealed class CustomerUnitTypeOption
+{
+    public string UnitTypeId { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+}
+
 public sealed class CustomerPageViewModel : ObservableObject
 {
     public CustomerPageViewModel(string route, string title, string description)
@@ -49,6 +55,9 @@ public sealed class CustomerPageViewModel : ObservableObject
 
     private string _reservationFacilityId = "";
     public string ReservationFacilityId { get => _reservationFacilityId; set => SetProperty(ref _reservationFacilityId, value); }
+    public ObservableCollection<CustomerUnitTypeOption> UnitTypes { get; } = new();
+    private string _selectedUnitTypeId = "";
+    public string SelectedUnitTypeId { get => _selectedUnitTypeId; set { if (SetProperty(ref _selectedUnitTypeId, value)) ReservationUnitTypeId = value; } }
     private string _reservationUnitTypeId = "";
     public string ReservationUnitTypeId { get => _reservationUnitTypeId; set => SetProperty(ref _reservationUnitTypeId, value); }
     private string _reservationStartMonth = DateTime.Today.AddMonths(1).ToString("yyyy-MM");
