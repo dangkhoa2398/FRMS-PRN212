@@ -22,6 +22,10 @@ public sealed class EmployeeWorkItem
     public string Description { get; init; } = "";
     public string Category { get; init; } = "";
     public string DateValue { get; init; } = "";
+    public string ReferenceId { get; init; } = "";
+    public string EntityId { get; init; } = "";
+    public string StorageUnitId { get; init; } = "";
+    public string WorkType { get; init; } = "";
     public string SearchText => string.Join(" ", Title, Subtitle, Status, Detail1, Detail2, Description, Category);
 }
 
@@ -35,6 +39,12 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         TaskDateChangedCommand = new AsyncRelayCommand(TaskDateChangedAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
+        CheckInCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckInAsync);
+        CheckOutCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckOutAsync);
+        CompleteTicketCommand = new AsyncRelayCommand<EmployeeWorkItem>(CompleteTicketAsync);
+        AssignTicketCommand = new AsyncRelayCommand<EmployeeWorkItem>(AssignTicketAsync);
+        CreateStorageUnitCommand = new AsyncRelayCommand(CreateStorageUnitAsync);
+        ChangeStorageStatusCommand = new AsyncRelayCommand<EmployeeWorkItem>(ChangeStorageStatusAsync);
     }
 
     private string _role = "";
@@ -114,6 +124,25 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand<string> NavigateCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
     public IAsyncRelayCommand TaskDateChangedCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> CheckInCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> CheckOutCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> CompleteTicketCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> AssignTicketCommand { get; }
+    public IAsyncRelayCommand CreateStorageUnitCommand { get; }
+    public IAsyncRelayCommand<EmployeeWorkItem> ChangeStorageStatusCommand { get; }
+    private string _actionInput = "";
+    public string ActionInput { get => _actionInput; set => SetProperty(ref _actionInput, value); }
+    private string _actionNote = "";
+    public string ActionNote { get => _actionNote; set => SetProperty(ref _actionNote, value); }
+    private string _newUnitTypeId = "";
+    public string NewUnitTypeId { get => _newUnitTypeId; set => SetProperty(ref _newUnitTypeId, value); }
+    private string _newUnitCode = "";
+    public string NewUnitCode { get => _newUnitCode; set => SetProperty(ref _newUnitCode, value); }
+    private string _newUnitLocation = "";
+    public string NewUnitLocation { get => _newUnitLocation; set => SetProperty(ref _newUnitLocation, value); }
+    private string _storageStatus = "AVAILABLE";
+    public string StorageStatus { get => _storageStatus; set => SetProperty(ref _storageStatus, value); }
+    public string[] StorageStatuses { get; } = { "AVAILABLE", "MAINTENANCE" };
 
     private async Task ReadFacilityNameAsync()
     {
