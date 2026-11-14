@@ -477,7 +477,7 @@ public sealed class MainViewModel : ObservableObject
                 Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
                 Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
                 Detail3 = "Start: " + DateLabel(Field(element, "startMonth")),
-                Detail4 = "End: " + DateLabel(Field(element, "endMonth")),
+                Detail4 = "End: " + DateLabel(Field(element, "endMonth")) + " | Contract ID: " + contractId,
                 ContractId = contractId
             },
             "invoices" => new CustomerRecord
