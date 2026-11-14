@@ -88,7 +88,8 @@ public sealed class CustomerPageViewModel : ObservableObject
     private string _storageMode = "All";
     public string StorageMode { get => _storageMode; set => SetProperty(ref _storageMode, value); }
     public string[] StorageModes { get; } = { "All", "PRIVATE", "PUBLIC" };
-    private string _storageSize = "";
+    public string[] StorageSizes { get; } = { "All", "SMALL", "MEDIUM", "LARGE" };
+    private string _storageSize = "All";
     public string StorageSize { get => _storageSize; set => SetProperty(ref _storageSize, value); }
     private DateTime? _startMonth = new DateTime(DateTime.Today.AddMonths(1).Year, DateTime.Today.AddMonths(1).Month, 1);
     public DateTime? StartMonth { get => _startMonth; set => SetProperty(ref _startMonth, value); }
