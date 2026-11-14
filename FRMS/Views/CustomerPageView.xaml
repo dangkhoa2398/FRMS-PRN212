@@ -252,7 +252,7 @@
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
                                     <TextBlock Text="Storage Size (Small / Medium / Large)" Style="{StaticResource Subtle}"/>
-                                    <ComboBox IsEditable="True" Text="{Binding StorageSize, UpdateSourceTrigger=PropertyChanged}"
+                                    <ComboBox ItemsSource="{Binding StorageSizes}" SelectedItem="{Binding StorageSize, Mode=TwoWay}"
                                               Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,14,14">
