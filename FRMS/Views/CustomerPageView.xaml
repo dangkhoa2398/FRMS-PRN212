@@ -50,6 +50,20 @@
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,3"/>
+                    <Button Content="Select this facility" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                            Command="{Binding DataContext.SelectFacilityCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.CurrentPage.IsStorage, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -119,6 +133,23 @@
                     <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,4,0,0"/>
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,7,0,0"/>
                     <TextBlock Text="{Binding Detail3}" Foreground="#1D4ED8" FontWeight="SemiBold" Margin="0,11,0,0"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="AccessVisitCard">
+            <Border Style="{StaticResource Panel}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" Foreground="#0F172A"/>
+                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,4,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <DatePicker SelectedDate="{Binding VisitDate, Mode=TwoWay}" Width="170" Height="34"/>
+                        <Button Content="Schedule Access Visit" Style="{StaticResource PrimaryButton}" Margin="12,0,0,0"
+                                IsEnabled="{Binding CanCreateVisit}"
+                                Command="{Binding DataContext.CreateVisitCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -253,19 +284,16 @@
                     <Border Style="{StaticResource Panel}" Margin="0,14,0,14">
                         <StackPanel>
                             <TextBlock Text="Create Reservation" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Search facilities above, copy the Facility ID, then enter a Unit Type ID and rental period. Availability and eligibility are validated by the backend."
+                            <TextBlock Text="Select a facility above. Its ID and available Unit Types will be filled in automatically."
                                        Style="{StaticResource Subtle}" Margin="0,6,0,12"/>
+                            <TextBlock Text="{Binding ReservationFacilityName}" FontWeight="SemiBold" Foreground="#1D4ED8" Margin="0,0,0,10"/>
+                            <TextBlock Text="Facility ID" Style="{StaticResource Subtle}"/>
+                            <TextBox Text="{Binding ReservationFacilityId}" IsReadOnly="True" Height="36" Padding="8" Margin="0,5,0,12"/>
                             <UniformGrid Columns="2">
                                 <StackPanel Margin="0,0,12,10">
-                                    <TextBlock Text="Facility ID" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding ReservationFacilityId, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
-                                </StackPanel>
-                                <StackPanel Margin="0,0,0,10">
-                                    <TextBlock Text="Unit Type" Style="{StaticResource Subtle}"/>
+                                    <TextBlock Text="Available Unit Type" Style="{StaticResource Subtle}"/>
                                     <ComboBox ItemsSource="{Binding UnitTypes}" DisplayMemberPath="DisplayName" SelectedValuePath="UnitTypeId"
                                               SelectedValue="{Binding SelectedUnitTypeId, Mode=TwoWay}" Height="36"/>
-                                    <Button Content="Load Unit Types" Style="{StaticResource PrimaryButton}" Margin="0,6,0,0"
-                                            Command="{Binding DataContext.LoadUnitTypesCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,10">
                                     <TextBlock Text="Start month (yyyy-MM)" Style="{StaticResource Subtle}"/>
@@ -290,6 +318,7 @@
                             <DataTrigger Binding="{Binding IsContracts}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                             <DataTrigger Binding="{Binding IsInvoices}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                             <DataTrigger Binding="{Binding IsSupport}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                            <DataTrigger Binding="{Binding IsAccess}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                         </Style.Triggers>
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
@@ -316,7 +345,14 @@
                                      Height="38" Padding="10,8"/>
                         </Grid>
                     </Border>
+
                     <Border Style="{StaticResource Panel}">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Panel}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers><DataTrigger Binding="{Binding IsSupport}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <StackPanel>
                             <TextBlock Text="Create Support Ticket" Style="{StaticResource Heading}"/>
                             <TextBlock Text="A ticket must be linked to one of your contracts. Copy its Contract ID from My Contracts."
@@ -347,6 +383,9 @@
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding IsSupport}" Value="True">
                                     <Setter Property="ItemTemplate" Value="{StaticResource SupportCard}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsAccess}" Value="True">
+                                    <Setter Property="ItemTemplate" Value="{StaticResource AccessVisitCard}"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style></ItemsControl.Style>
