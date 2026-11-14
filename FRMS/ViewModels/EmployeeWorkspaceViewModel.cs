@@ -309,6 +309,39 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         }
     }
 
+    private Task CheckInAsync(EmployeeWorkItem? item) => SendVisitCommandAsync(item, "check-in");
+    private Task CheckOutAsync(EmployeeWorkItem? item) => SendVisitCommandAsync(item, "check-out");
+    private async Task SendVisitCommandAsync(EmployeeWorkItem? item, string command)
+    {
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var visitId)) { Message = "Visit ID is missing."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/visits/" + visitId.ToString("D") + "/" + command); Message = "Visit operation completed."; await NavigateAsync(Route); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Visit operation failed: " + ex.Message; }
+    }
+    private async Task CompleteTicketAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var ticketId)) { Message = "Ticket ID is missing."; return; }
+        if (string.IsNullOrWhiteSpace(ActionNote) || ActionNote.Trim().Length > 1000) { Message = "Enter a completion note (1–1000 characters)."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/support-tickets/" + ticketId.ToString("D") + "/complete", new { resultNote = ActionNote.Trim() }); ActionNote = ""; Message = "Support ticket completed."; await NavigateAsync("support"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Ticket could not be completed: " + ex.Message; }
+    }
+    private async Task AssignTicketAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var ticketId) || !Guid.TryParse(ActionInput.Trim(), out var employeeId)) { Message = "Enter a valid Facility Staff Employee ID."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/support-tickets/" + ticketId.ToString("D") + "/assign", new { employeeId }); ActionInput = ""; Message = "Support ticket assigned."; await NavigateAsync("support"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Ticket assignment failed: " + ex.Message; }
+    }
+    private async Task CreateStorageUnitAsync()
+    {
+        if (!Guid.TryParse(FacilityId, out var facilityId) || !Guid.TryParse(NewUnitTypeId.Trim(), out var unitTypeId) || string.IsNullOrWhiteSpace(NewUnitCode)) { Message = "Enter a valid Unit Type ID and Unit Code. Manager facility must be loaded."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/facilities/" + facilityId.ToString("D") + "/storage-units", new { unitTypeId, unitCode = NewUnitCode.Trim(), locationInfo = NewUnitLocation.Trim() }); NewUnitCode = ""; NewUnitLocation = ""; Message = "Storage unit created."; await NavigateAsync("storage"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Storage unit was not created: " + ex.Message; }
+    }
+    private async Task ChangeStorageStatusAsync(EmployeeWorkItem? item)
+    {
+        if (item is null || !Guid.TryParse(item.StorageUnitId, out var unitId)) { Message = "Storage Unit ID is missing."; return; }
+        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/storage-units/" + unitId.ToString("D") + "/status", new { status = StorageStatus }); Message = "Storage unit status updated."; await NavigateAsync("storage"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Storage status was not changed: " + ex.Message; }
+    }
     private static JsonElement JsonField(JsonElement obj, string name) =>
         obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(name, out var value) ? value : default;
 
@@ -351,7 +384,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                     : "Unit type: " + Field(obj, "unitTypeMode", "unitTypeName"),
                 Category = Route == "task"
                     ? Field(obj, "workType") : Field(obj, "unitTypeMode", "unitTypeName"),
-                DateValue = Field(obj, "scheduledDate")
+                DateValue = Field(obj, "scheduledDate"),
+                ReferenceId = Field(obj, "referenceId"),
+                EntityId = Field(obj, "entityId"),
+                WorkType = Field(obj, "workType")
             },
             "storage" when IsManager => new EmployeeWorkItem
             {
@@ -361,6 +397,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Status = status,
                 Detail1 = "Unit type ID: " + Field(obj, "unitTypeId"),
                 Detail2 = "Storage unit ID: " + Field(obj, "storageUnitId"),
+                StorageUnitId = Field(obj, "storageUnitId"),
                 Description = "Facility: " + (string.IsNullOrWhiteSpace(FacilityName) ? Field(obj, "facilityId") : FacilityName),
                 Category = Field(obj, "unitTypeId")
             },
@@ -385,7 +422,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Detail2 = "Visit type: " + Field(obj, "visitType", "workType"),
                 Description = Field(obj, "resultNote", "customerName"),
                 Category = Field(obj, "visitType", "workType"),
-                DateValue = Field(obj, "scheduledDate", "visitDate")
+                DateValue = Field(obj, "scheduledDate", "visitDate"),
+                ReferenceId = Field(obj, "referenceId", "visitId"),
+                EntityId = Field(obj, "entityId"),
+                WorkType = Field(obj, "workType", "visitType")
             },
             _ => new EmployeeWorkItem
             {
@@ -395,7 +435,9 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                 Detail1 = "Assignee: " + (Field(obj, "assignedEmployeeName", "employeeName") is var employee && !string.IsNullOrWhiteSpace(employee) ? employee : "Unassigned"),
                 Detail2 = "Category: " + Field(obj, "category", "ticketCategory"),
                 Description = Field(obj, "description", "content", "message"),
-                Category = Field(obj, "category", "ticketCategory")
+                Category = Field(obj, "category", "ticketCategory"),
+                ReferenceId = Field(obj, "supportTicketId", "referenceId"),
+                EntityId = Field(obj, "contractId")
             }
         };
     }
