@@ -83,6 +83,7 @@
                 </Style>
             </Border.Style>
             <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="180"/>
                     <ColumnDefinition Width="200"/>
@@ -117,6 +118,26 @@
                     <TextBlock Text="Task / Visit date" Foreground="#64748B" Margin="0,0,0,6"/>
                     <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate, Mode=TwoWay}"
                                 SelectedDateChanged="WorkDateChanged"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,14,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding EmployeeWorkspace.Route}" Value="storage"/>
+                                        <Condition Binding="{Binding EmployeeWorkspace.IsManager}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBox Width="210" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Unit Type ID" Text="{Binding EmployeeWorkspace.NewUnitTypeId, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Width="150" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Unit Code" Text="{Binding EmployeeWorkspace.NewUnitCode, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Width="220" Height="34" Padding="7" Margin="0,0,8,0" ToolTip="Location information" Text="{Binding EmployeeWorkspace.NewUnitLocation, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="Create Storage Unit" Padding="12,7" Command="{Binding EmployeeWorkspace.CreateStorageUnitCommand}"/>
                 </StackPanel>
             </Grid>
         </Border>
