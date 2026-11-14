@@ -87,6 +87,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public ObservableCollection<string> StatusOptions { get; } = new() { "All" };
     public ObservableCollection<string> CategoryOptions { get; } = new() { "All" };
     public bool ShowFilters => Route != "home";
+    public bool ShowCategoryFilter => Route != "reservations" && Route != "home";
     public bool ShowDateFilter => Route is "access" or "task";
     private DateTime _taskDate = DateTime.Today;
     public DateTime TaskDate { get => _taskDate; set => SetProperty(ref _taskDate, value); }
@@ -251,6 +252,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(IsHome));
         OnPropertyChanged(nameof(HasRecords));
         OnPropertyChanged(nameof(ShowFilters));
+        OnPropertyChanged(nameof(ShowCategoryFilter));
         OnPropertyChanged(nameof(ShowDateFilter));
         _allItems.Clear();
         Items.Clear();
@@ -304,12 +306,12 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                     if (nested.ValueKind == JsonValueKind.Array) data = nested;
                 }
             }
+            if (IsManager && Route == "storage") await LoadAvailableUnitTypesAsync(cts.Token);
             var records = new List<EmployeeWorkItem>();
             if (data.ValueKind == JsonValueKind.Array)
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
             if (Route == "access" && IsStaff) records = records.Where(x => x.WorkType is "ACCESS_VISIT" or "RETURN_VISIT" or "RESERVATION_VISIT").ToList();
-            if (IsManager && Route == "storage") await LoadAvailableUnitTypesAsync(cts.Token);
             if (IsManager && Route == "support") await LoadFacilityStaffAsync(cts.Token);
             UpdateFilters(records);
             Message = records.Count == 0
@@ -397,7 +399,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
 
     private async Task CreateStorageUnitAsync()
     {
-        if (!Guid.TryParse(FacilityId, out var facilityId) || !Guid.TryParse(NewUnitTypeId.Trim(), out var unitTypeId) || string.IsNullOrWhiteSpace(NewUnitCode)) { Message = "Enter a valid Unit Type ID and Unit Code. Manager facility must be loaded."; return; }
+        if (!Guid.TryParse(FacilityId, out var facilityId) || !Guid.TryParse(NewUnitTypeId.Trim(), out var unitTypeId) || string.IsNullOrWhiteSpace(NewUnitCode)) { Message = "Select a storage type and enter a unit code (e.g. A-103). Ensure your assigned facility is available."; return; }
         try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/facilities/" + facilityId.ToString("D") + "/storage-units", new { unitTypeId, unitCode = NewUnitCode.Trim(), locationInfo = NewUnitLocation.Trim() }); NewUnitCode = ""; NewUnitLocation = ""; Message = "Storage unit created."; await NavigateAsync("storage"); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Storage unit was not created: " + ex.Message; }
     }
@@ -496,6 +498,13 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         return "";
     }
 
+    private string StorageTypeLabel(string id)
+    {
+        var option = AvailableUnitTypes.FirstOrDefault(x => x.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        return option is null || string.IsNullOrWhiteSpace(option.Name)
+            ? "Type information unavailable" : option.Name;
+    }
+
     private EmployeeWorkItem Map(JsonElement obj)
     {
         if (obj.ValueKind != JsonValueKind.Object) return new EmployeeWorkItem { Title = obj.ToString() };
@@ -535,11 +544,11 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                     ? codeName : "Storage unit",
                 Subtitle = "Location: " + (Field(obj, "locationInfo") is var location && !string.IsNullOrWhiteSpace(location) ? location : "Not specified"),
                 Status = status,
-                Detail1 = "Unit type ID: " + Field(obj, "unitTypeId"),
-                Detail2 = "Storage unit ID: " + Field(obj, "storageUnitId"),
+                Detail1 = "Storage type: " + StorageTypeLabel(Field(obj, "unitTypeId")),
+                Detail2 = "Unit code: " + Field(obj, "unitCode"),
                 StorageUnitId = Field(obj, "storageUnitId"),
                 Description = "Facility: " + (string.IsNullOrWhiteSpace(FacilityName) ? Field(obj, "facilityId") : FacilityName),
-                Category = Field(obj, "unitTypeId")
+                Category = StorageTypeLabel(Field(obj, "unitTypeId"))
             },
             "storage" => new EmployeeWorkItem
             {
