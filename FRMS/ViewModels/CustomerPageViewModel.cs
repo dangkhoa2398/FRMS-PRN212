@@ -41,6 +41,12 @@ public sealed class CustomerContractOption
     public string DisplayName { get; init; } = "";
 }
 
+public sealed class CustomerFacilityOption
+{
+    public string FacilityId { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+}
+
 public sealed class CustomerPageViewModel : ObservableObject
 {
     public CustomerPageViewModel(string route, string title, string description)
@@ -83,8 +89,9 @@ public sealed class CustomerPageViewModel : ObservableObject
     public string[] TicketCategories { get; } = { "UNIT_ISSUE", "LOCK_KEY_ISSUE", "ACCESS_CARD_CODE_ISSUE", "PAYMENT_ISSUE", "STORED_ITEM_ISSUE", "DAMAGE_ISSUE", "OTHER" };
     private string _ticketDescription = "";
     public string TicketDescription { get => _ticketDescription; set => SetProperty(ref _ticketDescription, value); }
-    private string _facilityQuery = "";
-    public string FacilityQuery { get => _facilityQuery; set => SetProperty(ref _facilityQuery, value); }
+    public ObservableCollection<CustomerFacilityOption> FacilityOptions { get; } = new();
+    private string _selectedFacilityId = "";
+    public string SelectedFacilityId { get => _selectedFacilityId; set => SetProperty(ref _selectedFacilityId, value); }
     private string _storageMode = "All";
     public string StorageMode { get => _storageMode; set => SetProperty(ref _storageMode, value); }
     public string[] StorageModes { get; } = { "All", "PRIVATE", "PUBLIC" };
