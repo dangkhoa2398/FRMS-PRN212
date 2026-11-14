@@ -125,6 +125,14 @@ public sealed class CustomerPageViewModel : ObservableObject
         if (IsReservations)
             foreach (var type in Records.Select(x => x.UnitType).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x))
                 UnitTypeOptions.Add(type);
+
+        // Re-select a valid option after rebuilding ItemsSource. WPF may otherwise
+        // keep a stale SelectedItem reference when the ObservableCollection is cleared.
+        if (!UnitTypeOptions.Contains(UnitTypeFilter))
+            UnitTypeFilter = "All";
+        else
+            UnitTypeFilter = "All";
+
         ApplyFilter();
     }
 
