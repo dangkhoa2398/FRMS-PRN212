@@ -433,7 +433,8 @@ public sealed class MainViewModel : ObservableObject
                 Subtitle = Field(element, "address", "location"),
                 Status = status,
                 Detail1 = Field(element, "description"),
-                Detail2 = "Contact: " + Field(element, "contactInfo")
+                Detail2 = "Contact: " + Field(element, "contactInfo"),
+                Detail3 = "Facility ID: " + Field(element, "facilityId")
             },
             "contracts" => new CustomerRecord
             {
