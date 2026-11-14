@@ -736,7 +736,8 @@ public sealed class MainViewModel : ObservableObject
                     var mode = Field(item, "mode");
                     var size = Field(item, "size");
                     if (page.StorageSize != "All" &&
-                        !size.Equals(page.StorageSize, StringComparison.OrdinalIgnoreCase)) continue;
+                        !size.Equals(page.StorageSize, StringComparison.OrdinalIgnoreCase) &&
+                        !name.Contains(page.StorageSize, StringComparison.OrdinalIgnoreCase)) continue;
                     result.Add(new CustomerRecord {
                         Title = string.IsNullOrWhiteSpace(name) ? "Storage " + size : name,
                         Subtitle = facility.Title + " | " + facility.Subtitle,
