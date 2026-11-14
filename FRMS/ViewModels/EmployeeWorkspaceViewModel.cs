@@ -186,7 +186,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         }
     }
 
-    private Task TaskDateChangedAsync() => Route is "task" or "access" ? NavigateAsync(Route) : Task.CompletedTask;
+    // The date is now a client-side filter; it does not change which days the API returns.
+    private Task TaskDateChangedAsync() { ApplyFilters(); return Task.CompletedTask; }
 
     public async Task InitializeAsync(string role)
     {
@@ -257,6 +258,8 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _loading?.Cancel();
         var cts = new CancellationTokenSource();
         _loading = cts;
+        var previousRoute = Route;
+        var previousDateFilter = SelectedDate;
         Route = route is "booking" ? "task" : route ?? "home";
         OnPropertyChanged(nameof(IsHome));
         OnPropertyChanged(nameof(HasRecords));
@@ -268,24 +271,25 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         SearchText = "";
         SelectedStatus = "All";
         SelectedCategory = "All";
-        SelectedDate = Route is "task" or "access" ? TaskDate : null;
+        // Show all dates by default; preserve an explicit filter only on same-page refresh.
+        SelectedDate = previousRoute == Route && ShowDateFilter ? previousDateFilter : null;
         (string title, string description, string? path) = Route switch
         {
             "home" => ("Home", "Your employee profile and assigned facility", null),
             "reservations" => ("Reservations", "Customer bookings at your assigned facility", "api/v1/reservations?page=1&pageSize=20"),
-            "task" => ("Task", "Daily work: reservations, arrivals, access and handovers", IsManager
+            "task" => ("Task", "All assigned work, including completed work. Use filters to narrow results.", IsManager
                 ? "api/v1/reservations?page=1&pageSize=20"
-                : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20"),
+                : "api/v1/staff/work-items?allDates=true&includeHistory=true&page=1&pageSize=100"),
             "storage" => IsManager
                 ? ("Storage Unit Control", "Physical storage units at your facility: code, location and operational status", Guid.TryParse(FacilityId, out _) ? $"api/v1/facilities/{FacilityId}/storage-units?page=1&pageSize=20" : null)
                 : ("Customer Contracts", "Customer rental contracts and unit assignments", "api/v1/contracts?page=1&pageSize=20"),
             "access" => IsManager
                 ? ("Visit Oversight", "Facility visits and customer access schedules", "api/v1/visits?page=1&pageSize=20")
-                : ("Customer Check-in / Out", "Daily customer access and handover work", $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20"),
+                : ("Customer Check-in / Out", "All customer visits including completed check-ins and check-outs. Filter by date if needed.", "api/v1/staff/work-items?allDates=true&includeHistory=true&page=1&pageSize=100"),
             "support" => IsManager
                 ? ("Ticket Assignment", "Review and coordinate customer support requests", "api/v1/support-tickets?page=1&pageSize=20")
                 : ("Resolve Tickets", "Follow up on customer tickets assigned to staff", "api/v1/support-tickets?page=1&pageSize=20"),
-            _ => ("Task", "Daily work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : $"api/v1/staff/work-items?date={TaskDate:yyyy-MM-dd}&page=1&pageSize=20")
+            _ => ("Task", "All assigned work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : "api/v1/staff/work-items?allDates=true&includeHistory=true&page=1&pageSize=100")
         };
         Title = title;
         Description = description;
@@ -320,13 +324,38 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             if (data.ValueKind == JsonValueKind.Array)
                 foreach (var element in data.EnumerateArray()) records.Add(Map(element));
             else if (data.ValueKind == JsonValueKind.Object) records.Add(Map(data));
+            // The public API is paginated. Retrieve subsequent pages so date/status
+            // filters work over a meaningful history, not just the first 100 rows.
+            var historyTruncated = false;
+            if (IsStaff && Route is "task" or "access")
+            {
+                var firstPageCount = data.ValueKind == JsonValueKind.Array ? data.GetArrayLength() : 0;
+                if (firstPageCount == 100)
+                {
+                    for (int pageNumber = 2; pageNumber <= 10; pageNumber++)
+                    {
+                        using var more = await _api.GetAsync(
+                            $"api/v1/staff/work-items?allDates=true&includeHistory=true&page={pageNumber}&pageSize=100",
+                            cts.Token);
+                        var moreData = JsonField(more.RootElement, "data");
+                        if (moreData.ValueKind == JsonValueKind.Object)
+                            moreData = JsonField(moreData, "items");
+                        if (moreData.ValueKind != JsonValueKind.Array || moreData.GetArrayLength() == 0)
+                            break;
+                        foreach (var entry in moreData.EnumerateArray()) records.Add(Map(entry));
+                        if (moreData.GetArrayLength() < 100) break;
+                        if (pageNumber == 10) historyTruncated = true;
+                    }
+                }
+            }
             if (Route == "access" && IsStaff) records = records.Where(x => x.IsVisit).ToList();
             if (IsManager && Route == "support") await LoadFacilityStaffAsync(cts.Token);
             UpdateFilters(records);
             Message = records.Count == 0
-                ? (Route == "task" ? $"No tasks assigned for {TaskDate:dd/MM/yyyy}." :
-                   Route == "access" ? $"No customer visits scheduled for {TaskDate:dd/MM/yyyy}. Choose another date to load its visits." : "No records found.")
-                : $"{Items.Count} of {records.Count} record(s) shown.";
+                ? (Route == "task" ? "No work items found in the available history." :
+                   Route == "access" ? "No customer visits found in the available history." : "No records found.")
+                : $"{Items.Count} of {records.Count} record(s) shown." +
+                  (historyTruncated ? " Showing the latest 1,000 records; narrow the date filter or consult the backend for older history." : "");
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
