@@ -348,7 +348,7 @@ public sealed class MainViewModel : ObservableObject
             "storage" => ("Find Storage", "Search facilities and available storage space", "api/v1/facilities?page=1&pageSize=20"),
             "reservations" => ("My Reservations", "Your booked storage types and rental dates", "api/v1/reservations?page=1&pageSize=20"),
             "contracts" => ("My Contracts", "Your rental units and visits", "api/v1/contracts?page=1&pageSize=20"),
-            "access" => ("Ra / Vào", "Choose an active contract and schedule an access visit", "api/v1/contracts?page=1&pageSize=100"),
+            "access" => ("Access Visits", "Choose an active contract and schedule an access visit", "api/v1/contracts?page=1&pageSize=100"),
             "invoices" => ("Invoices", "Billing and payment information", "api/v1/invoices?page=1&pageSize=20"),
             "support" => ("Support Requests", "Your requests and assigned support", "api/v1/support-tickets?page=1&pageSize=20"),
             _ => ("Home", "Your account overview", "api/v1/auth/me")
@@ -372,6 +372,10 @@ public sealed class MainViewModel : ObservableObject
             page.Search = "";
             page.SetRecords(Array.Empty<CustomerRecord>());
         }
+        // My Reservations loads its records immediately when the menu is opened.
+        // Only Find Storage intentionally waits for an explicit customer search.
+        if (route == "reservations")
+            page.HasSearched = true;
         CurrentPage = page;
         if (route == "storage" && !runStorageSearch)
         {
