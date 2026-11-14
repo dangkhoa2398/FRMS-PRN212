@@ -18,6 +18,7 @@ public sealed class CustomerRecord : ObservableObject
     public string Content { get; init; } = "";
     public string UnitType { get; set; } = "";
     public string UnitTypeId { get; init; } = "";
+    public string FacilityId { get; init; } = "";
     public string RelatedEntityId { get; init; } = "";
     public string RelatedStorage { get; set; } = "";
     public string ContractId { get; init; } = "";
@@ -52,8 +53,11 @@ public sealed class CustomerPageViewModel : ObservableObject
     public bool IsContracts => Route == "contracts";
     public bool IsInvoices => Route == "invoices";
     public bool IsSupport => Route == "support";
+    public bool IsAccess => Route == "access";
 
     private string _reservationFacilityId = "";
+    private string _reservationFacilityName = "";
+    public string ReservationFacilityName { get => _reservationFacilityName; set => SetProperty(ref _reservationFacilityName, value); }
     public string ReservationFacilityId { get => _reservationFacilityId; set => SetProperty(ref _reservationFacilityId, value); }
     public ObservableCollection<CustomerUnitTypeOption> UnitTypes { get; } = new();
     private string _selectedUnitTypeId = "";
