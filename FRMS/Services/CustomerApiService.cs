@@ -71,5 +71,22 @@ public sealed class CustomerApiService(HttpClient http)
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<JsonDocument> SendJsonAsync(HttpMethod method, string path, object? body = null, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(method, path);
+        if (body is not null) request.Content = JsonContent.Create(body);
+        if (!string.IsNullOrWhiteSpace(_token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+
+        using var response = await http.SendAsync(request, cancellationToken);
+        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(
+                $"API request failed (HTTP {(int)response.StatusCode}): {responseText}",
+                null, response.StatusCode);
+
+        return JsonDocument.Parse(string.IsNullOrWhiteSpace(responseText) ? "{}" : responseText);
+    }
+
     public void Logout() => _token = null;
 }
