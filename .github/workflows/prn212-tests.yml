@@ -5,12 +5,14 @@ on:
     paths:
       - 'FRMS/**'
       - 'FRMS.Tests/**'
+      - 'FRMS.WpfTests/**'
       - 'FRMS.slnx'
       - '.github/workflows/prn212-tests.yml'
   pull_request:
     paths:
       - 'FRMS/**'
       - 'FRMS.Tests/**'
+      - 'FRMS.WpfTests/**'
       - 'FRMS.slnx'
       - '.github/workflows/prn212-tests.yml'
 
