@@ -6,6 +6,7 @@ on:
       - 'FRMS/**'
       - 'FRMS.Tests/**'
       - 'FRMS.WpfTests/**'
+      - 'FRMS.SmokeTests/**'
       - 'FRMS.slnx'
       - '.github/workflows/prn212-tests.yml'
   pull_request:
@@ -13,6 +14,7 @@ on:
       - 'FRMS/**'
       - 'FRMS.Tests/**'
       - 'FRMS.WpfTests/**'
+      - 'FRMS.SmokeTests/**'
       - 'FRMS.slnx'
       - '.github/workflows/prn212-tests.yml'
 
@@ -26,6 +28,8 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Run API and ViewModel tests
         run: dotnet test FRMS.Tests/FRMS.Tests.csproj --configuration Release
+      - name: Build optional live backend smoke checker (no backend required)
+        run: dotnet build FRMS.SmokeTests/FRMS.SmokeTests.csproj --configuration Release
 
   wpf-build:
     runs-on: windows-latest

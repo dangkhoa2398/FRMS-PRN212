@@ -2,4 +2,5 @@
   <Project Path="FRMS/FRMS.csproj" />
   <Project Path="FRMS.Tests/FRMS.Tests.csproj" />
   <Project Path="FRMS.WpfTests/FRMS.WpfTests.csproj" />
+  <Project Path="FRMS.SmokeTests/FRMS.SmokeTests.csproj" />
 </Solution>
