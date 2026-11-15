@@ -15,6 +15,9 @@
   <ItemGroup>
     <!-- Compile platform-independent production logic, without requiring a Windows WPF host. -->
     <Compile Include="../FRMS/Services/CustomerApiService.cs" Link="Production/CustomerApiService.cs" />
+    <Compile Include="../FRMS/Services/FrmsApiClient.cs" Link="Production/FrmsApiClient.cs" />
+    <Compile Include="../FRMS/Services/FrmsHealthService.cs" Link="Production/FrmsHealthService.cs" />
+    <Compile Include="../FRMS/Services/IFrmsHealthService.cs" Link="Production/IFrmsHealthService.cs" />
     <Compile Include="../FRMS/ViewModels/CustomerPageViewModel.cs" Link="Production/CustomerPageViewModel.cs" />
   </ItemGroup>
 </Project>
