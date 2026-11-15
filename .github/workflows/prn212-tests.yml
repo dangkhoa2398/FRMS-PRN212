@@ -1,0 +1,36 @@
+name: PRN212 tests
+
+on:
+  push:
+    paths:
+      - 'FRMS/**'
+      - 'FRMS.Tests/**'
+      - 'FRMS.slnx'
+      - '.github/workflows/prn212-tests.yml'
+  pull_request:
+    paths:
+      - 'FRMS/**'
+      - 'FRMS.Tests/**'
+      - 'FRMS.slnx'
+      - '.github/workflows/prn212-tests.yml'
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run API and ViewModel tests
+        run: dotnet test FRMS.Tests/FRMS.Tests.csproj --configuration Release
+
+  wpf-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build WPF application
+        run: dotnet build FRMS/FRMS.csproj --configuration Release

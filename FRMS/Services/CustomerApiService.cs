@@ -5,79 +5,84 @@ using System.Text.Json;
 
 namespace FRMS.PRN212.WpfConnection.Services;
 
+/// <summary>
+/// HTTP boundary for the desktop client. Authentication state is session-scoped;
+/// request-level bearer headers avoid changing shared HttpClient defaults.
+/// </summary>
 public sealed class CustomerApiService(HttpClient http)
 {
     private string? _token;
 
-    public async Task<(bool Success, string Error)> LoginAsync(string phoneNumber, string password)
+    public async Task<(bool Success, string Error)> LoginAsync(
+        string phoneNumber, string password, CancellationToken cancellationToken = default)
     {
-        using var response = await http.PostAsJsonAsync("api/v1/auth/customer/login",
-            new { phoneNumber, password });
+        // An unsuccessful sign-in must never retain the previous account's token.
+        Logout();
+        using var response = await http.PostAsJsonAsync(
+            "api/v1/auth/customer/login", new { phoneNumber, password }, cancellationToken);
+
         if (!response.IsSuccessStatusCode)
             return (false, $"Login failed (HTTP {(int)response.StatusCode}). Check your credentials or account status.");
-        using var payload = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
-        if (!payload.RootElement.TryGetProperty("data", out var data)
-            || !data.TryGetProperty("accessToken", out var access)
-            || string.IsNullOrWhiteSpace(access.GetString())
-            || !data.TryGetProperty("user", out var user)
-            || !user.TryGetProperty("role", out var role)
-            || role.GetString() != "CUSTOMER")
+
+        var credentials = await ReadCredentialsAsync(response, cancellationToken);
+        if (credentials is null || credentials.Value.Role != "CUSTOMER")
             return (false, "Invalid token response or account is not a Customer.");
-        _token = access.GetString();
+
+        _token = credentials.Value.Token;
         return (true, "");
     }
 
-    public async Task<(bool Success, string Error, string Role)> LoginEmployeeAsync(string email, string password)
+    public async Task<(bool Success, string Error, string Role)> LoginEmployeeAsync(
+        string email, string password, CancellationToken cancellationToken = default)
     {
-        using var response = await http.PostAsJsonAsync("api/v1/auth/employee/login", new { email, password });
+        Logout();
+        using var response = await http.PostAsJsonAsync(
+            "api/v1/auth/employee/login", new { email, password }, cancellationToken);
+
         if (!response.IsSuccessStatusCode)
             return (false, $"Employee login failed (HTTP {(int)response.StatusCode}).", "");
-        using var payload = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
-        if (!payload.RootElement.TryGetProperty("data", out var data)
-            || !data.TryGetProperty("accessToken", out var access)
-            || !data.TryGetProperty("user", out var user)
-            || !user.TryGetProperty("role", out var role))
+
+        var credentials = await ReadCredentialsAsync(response, cancellationToken);
+        if (credentials is null)
             return (false, "Unexpected employee authentication response.", "");
-        string? roleName = role.GetString();
-        string? token = access.GetString();
-        if (string.IsNullOrWhiteSpace(token) ||
-            roleName is not ("FACILITY_STAFF" or "FACILITY_MANAGER"))
+
+        if (credentials.Value.Role is not ("FACILITY_STAFF" or "FACILITY_MANAGER"))
             return (false, "Only Facility Staff and Facility Manager are supported in this desktop application.", "");
-        _token = token;
-        return (true, "", roleName);
+
+        _token = credentials.Value.Token;
+        return (true, "", credentials.Value.Role);
     }
 
     public async Task<JsonDocument> GetAsync(string path, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        if (!string.IsNullOrEmpty(_token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var request = CreateRequest(HttpMethod.Get, path);
+        using var response = await http.SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
     }
 
-    public async Task CreateAccessVisitAsync(Guid contractId, DateTime visitDate, CancellationToken cancellationToken = default)
+    public async Task CreateAccessVisitAsync(
+        Guid contractId, DateTime visitDate, CancellationToken cancellationToken = default)
     {
-        if (contractId == Guid.Empty) throw new ArgumentException("A contract is required.", nameof(contractId));
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/contracts/{contractId:D}/access-visits")
+        if (contractId == Guid.Empty)
+            throw new ArgumentException("A contract is required.", nameof(contractId));
+
+        var body = new
         {
-            Content = JsonContent.Create(new { visitDate = visitDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) })
+            visitDate = visitDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
         };
-        if (!string.IsNullOrWhiteSpace(_token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        using var request = CreateRequest(
+            HttpMethod.Post, $"api/v1/contracts/{contractId:D}/access-visits", body);
         using var response = await http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task<JsonDocument> SendJsonAsync(HttpMethod method, string path, object? body = null, CancellationToken cancellationToken = default)
+    public async Task<JsonDocument> SendJsonAsync(
+        HttpMethod method, string path, object? body = null, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(method, path);
-        if (body is not null) request.Content = JsonContent.Create(body);
-        if (!string.IsNullOrWhiteSpace(_token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-
+        using var request = CreateRequest(method, path, body);
         using var response = await http.SendAsync(request, cancellationToken);
         var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -85,8 +90,58 @@ public sealed class CustomerApiService(HttpClient http)
                 $"API request failed (HTTP {(int)response.StatusCode}): {responseText}",
                 null, response.StatusCode);
 
+        // POST/DELETE endpoints may legitimately return 204 No Content.
         return JsonDocument.Parse(string.IsNullOrWhiteSpace(responseText) ? "{}" : responseText);
     }
 
     public void Logout() => _token = null;
+
+    private HttpRequestMessage CreateRequest(HttpMethod method, string path, object? body = null)
+    {
+        var request = new HttpRequestMessage(method, path);
+        if (body is not null)
+            request.Content = JsonContent.Create(body);
+        if (!string.IsNullOrWhiteSpace(_token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        return request;
+    }
+
+    private static async Task<(string Token, string Role)?> ReadCredentialsAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var payload = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            if (!TryGetObject(payload.RootElement, "data", out var data)
+                || !TryGetString(data, "accessToken", out var token)
+                || !TryGetObject(data, "user", out var user)
+                || !TryGetString(user, "role", out var role))
+                return null;
+            return (token, role);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static bool TryGetObject(JsonElement element, string name, out JsonElement value)
+    {
+        value = default;
+        return element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty(name, out value)
+            && value.ValueKind == JsonValueKind.Object;
+    }
+
+    private static bool TryGetString(JsonElement element, string name, out string value)
+    {
+        value = "";
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(name, out var property)
+            || property.ValueKind != JsonValueKind.String)
+            return false;
+        value = property.GetString() ?? "";
+        return !string.IsNullOrWhiteSpace(value);
+    }
 }
