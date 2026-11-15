@@ -133,12 +133,14 @@ public sealed class EmployeeWorkspaceTests
     {
         var server = new FakeBackend();
         var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
+        await vm.NavigateCommand.ExecuteAsync("access");
+        var beforeRefresh = server.Requests.Count(r => r.Path == "/api/v1/staff/work-items");
         var item = new EmployeeWorkItem { ReferenceId = FakeBackend.VisitId, Status = checkIn ? "SCHEDULED" : "CHECKED_IN", WorkType = "ACCESS_VISIT" };
         if (checkIn) await vm.CheckInCommand.ExecuteAsync(item);
         else await vm.CheckOutCommand.ExecuteAsync(item);
         Assert.Contains(server.Requests, r => r.Method == HttpMethod.Post &&
             r.Path == "/api/v1/visits/" + FakeBackend.VisitId + (checkIn ? "/check-in" : "/check-out"));
-        Assert.Contains("completed", vm.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(beforeRefresh + 1, server.Requests.Count(r => r.Path == "/api/v1/staff/work-items"));
     });
 
     [Fact]
@@ -161,7 +163,7 @@ public sealed class EmployeeWorkspaceTests
         Assert.Contains("completion note", vm.Message, StringComparison.OrdinalIgnoreCase);
         vm.ActionNote = "  Resolved  ";
         await vm.CompleteTicketCommand.ExecuteAsync(ticket);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/complete")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/complete"));
         Assert.Equal(HttpMethod.Post, req.Method);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal("Resolved", json.RootElement.GetProperty("resultNote").GetString());
@@ -178,7 +180,7 @@ public sealed class EmployeeWorkspaceTests
         Assert.Contains("Choose", vm.Message);
         vm.SelectedStaffId = FakeBackend.EmployeeId;
         await vm.AssignTicketCommand.ExecuteAsync(ticket);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/assign")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/assign"));
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(FakeBackend.EmployeeId, json.RootElement.GetProperty("employeeId").GetString());
         Assert.Equal("", vm.SelectedStaffId);
@@ -195,7 +197,7 @@ public sealed class EmployeeWorkspaceTests
         vm.NewUnitCode = " A-103 ";
         vm.NewUnitLocation = " Level 2 ";
         await vm.CreateStorageUnitCommand.ExecuteAsync(null);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/storage-units") && r.Method == HttpMethod.Post));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/storage-units") && r.Method == HttpMethod.Post);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal("A-103", json.RootElement.GetProperty("unitCode").GetString());
         Assert.Equal("Level 2", json.RootElement.GetProperty("locationInfo").GetString());
@@ -209,7 +211,7 @@ public sealed class EmployeeWorkspaceTests
         var vm = await NewEmployeeAsync(server, "FACILITY_MANAGER");
         vm.StorageStatus = "MAINTENANCE";
         await vm.ChangeStorageStatusCommand.ExecuteAsync(new EmployeeWorkItem { StorageUnitId = FakeBackend.StorageUnitId });
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/status")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/status"));
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal("MAINTENANCE", json.RootElement.GetProperty("status").GetString());
     });
@@ -226,7 +228,7 @@ public sealed class EmployeeWorkspaceTests
         inspection.InspectionNote = "  No damage  ";
         await vm.CompleteInspectionCommand.ExecuteAsync(inspection);
         Assert.Contains(server.Requests, r => r.Path.EndsWith("/claim") && r.Method == HttpMethod.Post);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/complete")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/complete"));
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal("No damage", json.RootElement.GetProperty("conditionNote").GetString());
     });
@@ -241,7 +243,7 @@ public sealed class EmployeeWorkspaceTests
         Assert.Contains("Storage Unit ID", vm.Message);
         vm.ActionInput = FakeBackend.StorageUnitId;
         await vm.CompleteHandoverCommand.ExecuteAsync(item);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/complete-handover")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/complete-handover"));
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(FakeBackend.VisitId, json.RootElement.GetProperty("visitId").GetString());
         Assert.Equal(FakeBackend.StorageUnitId, json.RootElement.GetProperty("storageUnitId").GetString());
@@ -258,7 +260,7 @@ public sealed class EmployeeWorkspaceTests
         Assert.Contains("yyyy-MM-dd", vm.Message);
         vm.ActionInput = "2026-11-15";
         await vm.ConfirmReturnCommand.ExecuteAsync(item);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/confirm-return")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/confirm-return"));
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal("2026-11-15", json.RootElement.GetProperty("actualReturnDate").GetString());
     });
@@ -277,7 +279,7 @@ public sealed class EmployeeWorkspaceTests
         }};
         var vm = await NewEmployeeAsync(server, "FACILITY_MANAGER");
         await vm.AssignHandoverUnitCommand.ExecuteAsync(new EmployeeWorkItem { ReferenceId = FakeBackend.ContractId });
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/handover-unit-assignment")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/handover-unit-assignment"));
         Assert.Equal(HttpMethod.Put, req.Method);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(FakeBackend.StorageUnitId, json.RootElement.GetProperty("storageUnitId").GetString());

@@ -238,7 +238,7 @@ public sealed class MainViewModelTests
         page.ReservationStartMonth = DateTime.Today.AddMonths(1).ToString("yyyy-MM");
         page.ReservationEndMonth = DateTime.Today.AddMonths(2).ToString("yyyy-MM");
         await vm.CreateReservationCommand.ExecuteAsync(null);
-        var req = Assert.Single(server.Requests.Where(r => r.Path == "/api/v1/reservations" && r.Method == HttpMethod.Post));
+        var req = Assert.Single(server.Requests, r => r.Path == "/api/v1/reservations" && r.Method == HttpMethod.Post);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(FakeBackend.FacilityId, json.RootElement.GetProperty("facilityId").GetString());
         Assert.Equal(FakeBackend.UnitTypeId, json.RootElement.GetProperty("unitTypeId").GetString());
@@ -253,12 +253,15 @@ public sealed class MainViewModelTests
         var vm = NewMain(server);
         await SignInCustomerAsync(vm);
         await vm.NavigateCommand.ExecuteAsync("support");
+        vm.CurrentPage.TicketContractId = "";
         await vm.CreateSupportTicketCommand.ExecuteAsync(null);
         Assert.Contains("Choose a contract", vm.CurrentPage.Message);
         vm.CurrentPage.TicketContractId = FakeBackend.ContractId;
+        await vm.CreateSupportTicketCommand.ExecuteAsync(null);
+        Assert.Contains("Describe the issue", vm.CurrentPage.Message);
         vm.CurrentPage.TicketDescription = "  Gate is jammed  ";
         await vm.CreateSupportTicketCommand.ExecuteAsync(null);
-        var req = Assert.Single(server.Requests.Where(r => r.Path == "/api/v1/support-tickets" && r.Method == HttpMethod.Post));
+        var req = Assert.Single(server.Requests, r => r.Path == "/api/v1/support-tickets" && r.Method == HttpMethod.Post);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(FakeBackend.ContractId, json.RootElement.GetProperty("contractId").GetString());
         Assert.Equal("Gate is jammed", json.RootElement.GetProperty("description").GetString());
@@ -279,7 +282,7 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(server.Requests, r => r.Path.Contains("access-visits"));
         item.VisitDate = DateTime.Today.AddDays(1);
         await vm.CreateVisitCommand.ExecuteAsync(item);
-        var req = Assert.Single(server.Requests.Where(r => r.Path.EndsWith("/access-visits")));
+        var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/access-visits"));
         Assert.Equal(HttpMethod.Post, req.Method);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(DateTime.Today.AddDays(1).ToString("yyyy-MM-dd"),
