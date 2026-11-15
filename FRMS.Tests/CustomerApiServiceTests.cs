@@ -35,7 +35,7 @@ public sealed class CustomerApiServiceTests
     public async Task EmployeeLogin_AcceptsSupportedRoles(string role)
     {
         var handler = new RecordingHandler(_ => JsonResponse(
-            $$"""{"data":{"accessToken":"employee-jwt","user":{"role":"{{role}}"}}}"""));
+            JsonSerializer.Serialize(new { data = new { accessToken = "employee-jwt", user = new { role } } })));
         using var client = CreateClient(handler);
         var service = new CustomerApiService(client);
 
