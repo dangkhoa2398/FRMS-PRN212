@@ -34,3 +34,13 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Build WPF application
         run: dotnet build FRMS/FRMS.csproj --configuration Release
+
+  wpf-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run ViewModel command and state tests
+        run: dotnet test FRMS.WpfTests/FRMS.WpfTests.csproj --configuration Release
