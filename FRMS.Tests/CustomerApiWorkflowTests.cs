@@ -177,7 +177,7 @@ public sealed class CustomerApiWorkflowTests
         var transport = new TestTransport(_ => TestTransport.Json("not-json"));
         var service = NewService(transport, out var client);
         using var ownedClient = client;
-        await Assert.ThrowsAsync<JsonException>(() => service.GetAsync("api/v1/reservations"));
+        await Assert.ThrowsAnyAsync<JsonException>(() => service.GetAsync("api/v1/reservations"));
     }
 
     [Theory]

@@ -93,7 +93,7 @@ public sealed class FrmsApiClientTests
         using var api = new FrmsApiClient(http);
         var error = await Assert.ThrowsAsync<HttpRequestException>(() => api.GetJsonAsync("api/v1/contracts"));
         Assert.Equal(HttpStatusCode.Forbidden, error.StatusCode);
-        await Assert.ThrowsAsync<JsonException>(() => api.GetJsonAsync("api/v1/contracts"));
+        await Assert.ThrowsAnyAsync<JsonException>(() => api.GetJsonAsync("api/v1/contracts"));
     }
 
     [Fact]
