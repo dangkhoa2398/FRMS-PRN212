@@ -62,11 +62,13 @@ public sealed class EmployeeWorkspaceTests
         var server = new FakeBackend
         {
             Reply = r => r.Path == "/api/v1/staff/work-items"
-                ? FakeBackend.Json("""{"data":{"items":[
+                ? FakeBackend.Json("""
+                {"data":{"items":[
                     {"workType":"ACCESS_VISIT","status":"SCHEDULED","referenceId":"44444444-4444-4444-4444-444444444444","scheduledDate":"2026-11-18"},
                     {"workType":"INSPECTION","status":"COMPLETED","inspectionId":"88888888-8888-8888-8888-888888888888","scheduledDate":"2026-11-18"},
                     {"workType":"RETURN_VISIT","status":"COMPLETED","scheduledDate":"2026-11-19"}
-                ]}}""")
+                ]}}
+                """)
                 : r.Path == "/api/v1/auth/me" || r.Path == "/api/v1/facilities/" + FakeBackend.FacilityId
                     ? FakeProfile(r)
                     : FakeBackend.Json("""{"data":{"items":[]}}""")
@@ -87,11 +89,13 @@ public sealed class EmployeeWorkspaceTests
     public Task Staff_TaskShowsHistoryAndFiltersStatusAndSearch() => StaTest.RunAsync(async () =>
     {
         var server = new FakeBackend { Reply = r => r.Path == "/api/v1/staff/work-items"
-            ? FakeBackend.Json("""{"data":{"items":[
+            ? FakeBackend.Json("""
+                {"data":{"items":[
                 {"workType":"ACCESS_VISIT","status":"SCHEDULED","scheduledDate":"2026-11-19"},
                 {"workType":"RETURN_VISIT","status":"COMPLETED","scheduledDate":"2026-11-20"},
                 {"workType":"INSPECTION","status":"COMPLETED","scheduledDate":"2026-11-21"}
-            ]}}""")
+            ]}}
+            """)
             : FakeProfile(r) };
         var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
         await vm.NavigateCommand.ExecuteAsync("task");
