@@ -23,7 +23,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task CustomerLogin_RequiresCustomerRole(string role, bool accepted)
     {
         var transport = new TestTransport(_ => TestTransport.Json(TestTransport.Auth(role)));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var result = await service.LoginAsync("0900000000", "password");
         Assert.Equal(accepted, result.Success);
         Assert.Equal("/api/v1/auth/customer/login", transport.Requests[0].Path);
@@ -41,7 +42,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task EmployeeLogin_AcceptsOnlyDesktopRoles(string role, bool accepted)
     {
         var transport = new TestTransport(_ => TestTransport.Json(TestTransport.Auth(role)));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var result = await service.LoginEmployeeAsync("staff@site.test", "secret");
         Assert.Equal(accepted, result.Success);
         Assert.Equal(accepted ? role : "", result.Role);
@@ -58,7 +60,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task CustomerLogin_HttpFailures_AreReportedWithoutThrowing(int status)
     {
         var transport = new TestTransport(_ => TestTransport.Json("{}", (HttpStatusCode)status));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var result = await service.LoginAsync("phone", "pw");
         Assert.False(result.Success);
         Assert.Contains(status.ToString(), result.Error);
@@ -71,7 +74,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task EmployeeLogin_HttpFailures_AreReportedWithoutThrowing(int status)
     {
         var transport = new TestTransport(_ => TestTransport.Json("{}", (HttpStatusCode)status));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var result = await service.LoginEmployeeAsync("email", "pw");
         Assert.False(result.Success);
         Assert.Equal("", result.Role);
@@ -88,7 +92,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task CustomerLogin_MalformedEnvelope_IsRejected(string payload)
     {
         var transport = new TestTransport(_ => TestTransport.Json(payload));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         Assert.False((await service.LoginAsync("phone", "pw")).Success);
     }
 
@@ -99,7 +104,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task EmployeeLogin_InvalidPayload_IsRejected(string payload)
     {
         var transport = new TestTransport(_ => TestTransport.Json(payload));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var result = await service.LoginEmployeeAsync("staff", "pw");
         Assert.False(result.Success);
     }
@@ -112,7 +118,8 @@ public sealed class CustomerApiWorkflowTests
             : r.Path.Contains("customer/login")
                 ? TestTransport.Json(TestTransport.Auth("CUSTOMER", "customer-token"))
                 : TestTransport.Json());
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         Assert.True((await service.LoginEmployeeAsync("email", "pw")).Success);
         using (var initial = await service.GetAsync("api/v1/contracts"))
             Assert.Equal("Bearer staff-token", transport.Requests[^1].Authorization);
@@ -130,7 +137,8 @@ public sealed class CustomerApiWorkflowTests
             : r.Path.Contains("employee/login")
                 ? TestTransport.Json("{}", HttpStatusCode.Unauthorized)
                 : TestTransport.Json());
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         Assert.True((await service.LoginAsync("phone", "pw")).Success);
         Assert.False((await service.LoginEmployeeAsync("email", "pw")).Success);
         using var data = await service.GetAsync("api/v1/invoices");
@@ -145,7 +153,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task CustomerRead_UsesGetAndParsesEnvelope(string path, HttpStatusCode status)
     {
         var transport = new TestTransport(_ => TestTransport.Json("{\"data\":{\"items\":[]}}", status));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         using var json = await service.GetAsync(path);
         Assert.Equal(HttpMethod.Get, transport.Requests[0].Method);
         Assert.Equal("/" + path, transport.Requests[0].Path);
@@ -156,7 +165,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task Get_WhenUnauthorized_PreservesStatusCode()
     {
         var transport = new TestTransport(_ => TestTransport.Json("{}", HttpStatusCode.Unauthorized));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var error = await Assert.ThrowsAsync<HttpRequestException>(() => service.GetAsync("api/v1/contracts"));
         Assert.Equal(HttpStatusCode.Unauthorized, error.StatusCode);
     }
@@ -165,7 +175,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task Get_InvalidJson_ThrowsJsonException()
     {
         var transport = new TestTransport(_ => TestTransport.Json("not-json"));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         await Assert.ThrowsAsync<JsonException>(() => service.GetAsync("api/v1/reservations"));
     }
 
@@ -181,7 +192,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task SendJson_UsesProvidedVerbRouteAndBody(string path, string verb)
     {
         var transport = new TestTransport(_ => TestTransport.Json("{\"data\":{}}"));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         using var response = await service.SendJsonAsync(new HttpMethod(verb), path, new { ticket = "demo" });
         Assert.Equal(path, transport.Requests[0].Path.TrimStart('/'));
         Assert.Equal(verb, transport.Requests[0].Method.Method);
@@ -194,7 +206,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task SendJson_NullBody_DoesNotSendContent()
     {
         var transport = new TestTransport(_ => TestTransport.Json());
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         using var doc = await service.SendJsonAsync(HttpMethod.Post, "api/v1/visits/id/check-in");
         Assert.Null(transport.Requests[0].Body);
     }
@@ -204,7 +217,8 @@ public sealed class CustomerApiWorkflowTests
     {
         var transport = new TestTransport(_ => TestTransport.Json(
             "{\"error\":{\"code\":\"VALIDATION_ERROR\"}}", HttpStatusCode.BadRequest));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var ex = await Assert.ThrowsAsync<HttpRequestException>(() => service.SendJsonAsync(
             HttpMethod.Post, "api/v1/reservations", new { startMonth = "invalid" }));
         Assert.Equal(HttpStatusCode.BadRequest, ex.StatusCode);
@@ -215,7 +229,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task CreateAccessVisit_BackendConflict_IsNotSwallowed()
     {
         var transport = new TestTransport(_ => TestTransport.Json("{}", HttpStatusCode.Conflict));
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         var ex = await Assert.ThrowsAsync<HttpRequestException>(() =>
             service.CreateAccessVisitAsync(Guid.NewGuid(), DateTime.Today.AddDays(1)));
         Assert.Equal(HttpStatusCode.Conflict, ex.StatusCode);
@@ -225,7 +240,8 @@ public sealed class CustomerApiWorkflowTests
     public async Task CancelledCall_PropagatesCancellation()
     {
         var transport = new TestTransport(_ => TestTransport.Json());
-        var service = NewService(transport, out using var client);
+        var service = NewService(transport, out var client);
+        using var ownedClient = client;
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
