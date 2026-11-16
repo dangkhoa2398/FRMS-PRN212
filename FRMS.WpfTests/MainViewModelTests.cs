@@ -84,7 +84,7 @@ public sealed class MainViewModelTests
             {
                 data = new { accessToken = "employee-jwt", user = new { role = employeeRole } }
             }))
-            : null);
+            : r.Path == "/api/v1/reservations" ? HandoverReservation("PENDING_DEPOSIT", "PAID", null) : null);
         var vm = NewMain(server);
         var window = new FRMS.PRN212.WpfConnection.MainWindow(vm);
         var root = Assert.IsType<Grid>(window.Content);
@@ -132,6 +132,14 @@ public sealed class MainViewModelTests
                     await LayoutAsync();
                     Assert.Equal(route, vm.CurrentPage.Route);
                     Assert.Equal(Visibility.Visible, customerHost.Visibility);
+                    if (route == "reservations")
+                    {
+                        var schedule = Assert.Single(Visuals<Button>(customerHost),
+                            button => Equals(button.Content, "Schedule handover"));
+                        Assert.Equal(Visibility.Visible, schedule.Visibility);
+                        Assert.Same(vm.ScheduleHandoverCommand, schedule.Command);
+                        Assert.Same(Assert.Single(vm.CurrentPage.Records), schedule.CommandParameter);
+                    }
                     if (route == "invoices")
                     {
                         var pay = Assert.Single(Visuals<Button>(customerHost), button => Equals(button.Content, "Pay with payOS"));
@@ -331,6 +339,96 @@ public sealed class MainViewModelTests
         Assert.Contains(server.Requests, r => r.Path.EndsWith("/unit-types") &&
             r.Query.Contains("mode=PRIVATE") && r.Query.Contains("availableOnly=true"));
     });
+
+    [Theory]
+    [InlineData("PENDING_DEPOSIT", "UNPAID", null, false)]
+    [InlineData("CONFIRMED", "PAID", "2027-01-05", false)]
+    [InlineData("PENDING_DEPOSIT", "PAID", null, true)]
+    public Task Reservations_ScheduleHandoverOnlyWhenEligible(string status, string depositStatus,
+        string? visitDate, bool eligible) => StaTest.RunAsync(async () =>
+    {
+        var path = $"/api/v1/reservations/{FakeBackend.ContractId}/confirm";
+        var server = NewBackend(request => request.Path switch
+        {
+            "/api/v1/reservations" => HandoverReservation(status, depositStatus, visitDate),
+            _ when request.Path == path => FakeBackend.Json("""
+                {"data":{"status":"CONFIRMED","reservationVisit":{"visitDate":"2027-01-06","status":"SCHEDULED"}}}
+                """),
+            _ => null
+        });
+        var vm = NewMain(server);
+        await SignInCustomerAsync(vm);
+        await vm.NavigateCommand.ExecuteAsync("reservations");
+        var reservation = Assert.Single(vm.CurrentPage.Records);
+        Assert.Equal(eligible, reservation.CanScheduleHandover);
+        Assert.Equal(new DateTime(2027, 1, 1), reservation.HandoverMonthStart);
+        if (visitDate is not null)
+            Assert.Contains("SCHEDULED", reservation.HandoverSummary);
+
+        if (eligible)
+        {
+            await vm.ScheduleHandoverCommand.ExecuteAsync(reservation);
+            Assert.Contains("Choose a handover date", reservation.HandoverError);
+            Assert.DoesNotContain(server.Requests, request => request.Path == path);
+        }
+
+        reservation.HandoverDate = new DateTime(2027, 1, 5);
+        await vm.ScheduleHandoverCommand.ExecuteAsync(reservation);
+        if (!eligible)
+        {
+            Assert.DoesNotContain(server.Requests, request => request.Path == path);
+            return;
+        }
+
+        await vm.ScheduleHandoverCommand.ExecuteAsync(reservation);
+        var confirmation = Assert.Single(server.Requests, request => request.Path == path);
+        Assert.Equal(HttpMethod.Post, confirmation.Method);
+        using var payload = JsonDocument.Parse(confirmation.Body!);
+        Assert.Equal("2027-01-05", payload.RootElement.GetProperty("reservationVisitDate").GetString());
+        Assert.Equal("CONFIRMED", reservation.Status);
+        Assert.Equal(new DateOnly(2027, 1, 6), reservation.ScheduledHandoverDate);
+        Assert.False(reservation.CanScheduleHandover);
+    });
+
+    [Theory]
+    [InlineData("VISIT_DATE_OUT_OF_POLICY", "outside the facility's handover window")]
+    [InlineData("DEPOSIT_NOT_PAID", "deposit has not been marked paid")]
+    public Task Reservations_ShowHandoverRejectionWithoutConfirming(string code, string message) => StaTest.RunAsync(async () =>
+    {
+        var server = NewBackend(request => request.Path == "/api/v1/reservations"
+            ? HandoverReservation("PENDING_DEPOSIT", "PAID", null)
+            : request.Path.EndsWith("/confirm")
+                ? FakeBackend.Json(JsonSerializer.Serialize(new { code }), HttpStatusCode.Conflict)
+                : null);
+        var vm = NewMain(server);
+        await SignInCustomerAsync(vm);
+        await vm.NavigateCommand.ExecuteAsync("reservations");
+        var reservation = Assert.Single(vm.CurrentPage.Records);
+        reservation.HandoverDate = new DateTime(2027, 1, 5);
+
+        await vm.ScheduleHandoverCommand.ExecuteAsync(reservation);
+
+        Assert.Contains(message, reservation.HandoverError);
+        Assert.Equal("PENDING_DEPOSIT", reservation.Status);
+        Assert.Null(reservation.ScheduledHandoverDate);
+        Assert.False(vm.CurrentPage.IsLoading);
+    });
+
+    private static HttpResponseMessage HandoverReservation(string status, string depositStatus, string? visitDate) =>
+        FakeBackend.Json(JsonSerializer.Serialize(new
+        {
+            data = new[]
+            {
+                new
+                {
+                    reservationId = FakeBackend.ContractId,
+                    startMonth = "2027-01",
+                    status,
+                    depositInvoice = new { status = depositStatus },
+                    reservationVisit = visitDate is null ? null : new { visitDate, status = "SCHEDULED" }
+                }
+            }
+        }));
 
     [Fact]
     public Task Contracts_ResolveFacilityNameAndKeepUnitCode() => StaTest.RunAsync(async () =>

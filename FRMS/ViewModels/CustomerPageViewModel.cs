@@ -9,7 +9,42 @@ public sealed class CustomerRecord : ObservableObject
 {
     public string Title { get; set; } = "";
     public string Subtitle { get; init; } = "";
-    public string Status { get; init; } = "";
+    private string _status = "";
+    public string Status { get => _status; init => _status = value; }
+    public Guid ReservationId { get; init; }
+    public string DepositStatus { get; init; } = "";
+    public DateOnly? RentalStartMonth { get; init; }
+    public DateTime? HandoverMonthStart => RentalStartMonth?.ToDateTime(TimeOnly.MinValue);
+    public DateTime? HandoverMonthEnd => HandoverMonthStart?.AddMonths(1).AddDays(-1);
+    public DateOnly? ScheduledHandoverDate { get; private set; }
+    public string HandoverVisitStatus { get; private set; } = "";
+    public bool CanScheduleHandover => ReservationId != Guid.Empty && ScheduledHandoverDate is null &&
+        Status == "PENDING_DEPOSIT" && DepositStatus == "PAID";
+    public string HandoverSummary => ScheduledHandoverDate is { } date
+        ? $"Handover visit: {date:dd MMM yyyy} ({HandoverVisitStatus})"
+        : Status == "PENDING_DEPOSIT"
+            ? CanScheduleHandover ? "Deposit paid. Choose a handover date in your rental start month."
+                : "Pay the deposit in Invoices, then refresh My Reservations to schedule handover."
+            : "";
+
+    private DateTime? _handoverDate;
+    public DateTime? HandoverDate { get => _handoverDate; set => SetProperty(ref _handoverDate, value); }
+    private string _handoverError = "";
+    public string HandoverError { get => _handoverError; set => SetProperty(ref _handoverError, value); }
+
+    public void SetHandoverVisit(DateOnly date, string visitStatus)
+    {
+        ScheduledHandoverDate = date;
+        HandoverVisitStatus = visitStatus;
+        OnPropertyChanged(nameof(HandoverSummary));
+        OnPropertyChanged(nameof(CanScheduleHandover));
+    }
+
+    public void ConfirmHandover(DateOnly date, string visitStatus)
+    {
+        SetProperty(ref _status, "CONFIRMED", nameof(Status));
+        SetHandoverVisit(date, visitStatus);
+    }
     public string Detail1 { get; init; } = "";
     public string Detail2 { get; init; } = "";
     public string Detail3 { get; init; } = "";
@@ -123,7 +158,7 @@ public sealed class CustomerPageViewModel : ObservableObject
 
     public string[] StatusOptions => Route switch
     {
-        "reservations" => new[] { "All", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED" },
+        "reservations" => new[] { "All", "PENDING_DEPOSIT", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED" },
         "contracts" => new[] { "All", "ACTIVE", "ENDED" },
         "invoices" => new[] { "All", "UNPAID", "PAID", "OVERDUE" },
         "support" => new[] { "All", "OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED" },
@@ -161,7 +196,7 @@ public sealed class CustomerPageViewModel : ObservableObject
         ApplyFilter();
     }
 
-    private void ApplyFilter()
+    internal void ApplyFilter()
     {
         var query = Records.Where(x =>
             (SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
