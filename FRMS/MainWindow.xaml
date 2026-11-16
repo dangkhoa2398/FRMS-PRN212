@@ -4,7 +4,8 @@
         Title="FRMS - Storage Management" Width="1240" Height="790"
         MinWidth="1000" MinHeight="650" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True"
-        Background="{DynamicResource PageBackgroundBrush}">
+        Background="{DynamicResource PageBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
     <Grid>
         <ContentControl x:Name="LoginHost">
             <ContentControl.Style>

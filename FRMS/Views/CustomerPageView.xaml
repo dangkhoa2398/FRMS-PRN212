@@ -322,7 +322,7 @@
                                 <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="200" ToolTip="Filter by Storage Type"
                                           Height="38" Margin="0,0,0,0">
                                     <ComboBox.Style>
-                                        <Style TargetType="ComboBox">
+                                        <Style TargetType="ComboBox" BasedOn="{StaticResource AppComboBoxStyle}">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsReservations}" Value="True">

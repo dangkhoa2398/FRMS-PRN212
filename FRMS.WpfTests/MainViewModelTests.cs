@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Threading;
 using FRMS.PRN212.WpfConnection.Services;
 using FRMS.PRN212.WpfConnection.ViewModels;
 using Xunit;
@@ -64,6 +67,133 @@ public sealed class MainViewModelTests
         vm.PhoneNumber = "0900000000";
         await vm.LoginCommand.ExecuteAsync(new PasswordBox { Password = "correct-password" });
         Assert.True(vm.IsAuthenticated);
+    }
+
+    [Fact]
+    public Task LoginAndRoleViews_LoadAndLayOutInBothThemes() => StaTest.RunAsync(async () =>
+    {
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary());
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/FRMS;component/Themes/Controls.xaml", UriKind.Relative)
+        });
+        var employeeRole = "FACILITY_MANAGER";
+        var server = NewBackend(r => r.Path.EndsWith("/auth/employee/login")
+            ? FakeBackend.Json(JsonSerializer.Serialize(new
+            {
+                data = new { accessToken = "employee-jwt", user = new { role = employeeRole } }
+            }))
+            : null);
+        var vm = NewMain(server);
+        var window = new FRMS.PRN212.WpfConnection.MainWindow(vm);
+        var root = Assert.IsType<Grid>(window.Content);
+        var loginHost = Assert.IsType<ContentControl>(window.FindName("LoginHost"));
+        var customerHost = Assert.IsType<ContentControl>(window.FindName("ShellHost"));
+        var employeeHost = Assert.IsType<ContentControl>(window.FindName("EmployeeShellHost"));
+
+        async Task LayoutAsync()
+        {
+            root.Measure(new Size(1000, 650));
+            root.Arrange(new Rect(0, 0, 1000, 650));
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            root.UpdateLayout();
+        }
+
+        try
+        {
+            foreach (var theme in new[] { "Light", "Dark" })
+            {
+                app.Resources.MergedDictionaries[0] = new ResourceDictionary
+                {
+                    Source = new Uri($"/FRMS;component/Themes/{theme}.xaml", UriKind.Relative)
+                };
+                await LayoutAsync();
+                Assert.Equal(Visibility.Visible, loginHost.Visibility);
+                var phone = VisibleLoginField(loginHost);
+                var password = Assert.Single(Visuals<PasswordBox>(loginHost));
+                phone.SetCurrentValue(TextBox.TextProperty, "0900000000");
+                password.Password = "test-password";
+                Assert.Equal("0900000000", vm.PhoneNumber);
+                AssertInputLayout(phone);
+                AssertInputLayout(password);
+                var accountType = Assert.Single(Visuals<ComboBox>(loginHost));
+                var selection = Assert.Single(Visuals<TextBlock>(accountType), x => x.Text == "Customer");
+                Assert.Equal(SystemColors.WindowTextColor, Assert.IsType<SolidColorBrush>(selection.Foreground).Color);
+
+                var submit = Assert.Single(Visuals<Button>(loginHost), x => Equals(x.Content, "Sign in"));
+                Assert.Same(password, submit.CommandParameter);
+                await vm.LoginCommand.ExecuteAsync(submit.CommandParameter as PasswordBox);
+                Assert.Empty(password.Password);
+                foreach (var route in new[] { "home", "storage", "reservations", "contracts", "invoices", "support" })
+                {
+                    await vm.NavigateCommand.ExecuteAsync(route);
+                    await LayoutAsync();
+                    Assert.Equal(route, vm.CurrentPage.Route);
+                    Assert.Equal(Visibility.Visible, customerHost.Visibility);
+                }
+                vm.LogoutCommand.Execute(null);
+
+                foreach (var role in new[] { "FACILITY_MANAGER", "FACILITY_STAFF" })
+                {
+                    employeeRole = role;
+                    vm.LoginMode = "Staff / Manager";
+                    await LayoutAsync();
+                    var email = VisibleLoginField(loginHost);
+                    email.SetCurrentValue(TextBox.TextProperty, "employee@example.test");
+                    password.Password = "test-password";
+                    Assert.Equal("employee@example.test", vm.EmployeeEmail);
+                    AssertInputLayout(email);
+                    await vm.LoginCommand.ExecuteAsync(password);
+                    Assert.Equal(role, vm.EmployeeRole);
+                    var routes = new[] { "home", "storage", "access", "support",
+                        role == "FACILITY_MANAGER" ? "reservations" : "task" };
+                    foreach (var route in routes)
+                    {
+                        await vm.EmployeeWorkspace.NavigateCommand.ExecuteAsync(route);
+                        await LayoutAsync();
+                        Assert.Equal(route, vm.EmployeeWorkspace.Route);
+                        Assert.Equal(Visibility.Visible, employeeHost.Visibility);
+                        if (route == "access")
+                        {
+                            var picker = Assert.Single(Visuals<DatePicker>(employeeHost));
+                            var dateField = Assert.IsType<System.Windows.Controls.Primitives.DatePickerTextBox>(
+                                picker.Template.FindName("PART_TextBox", picker));
+                            Assert.Equal(SystemColors.WindowTextColor, Assert.IsType<SolidColorBrush>(dateField.Foreground).Color);
+                        }
+                    }
+                    vm.LogoutCommand.Execute(null);
+                }
+                vm.LoginMode = "Customer";
+            }
+        }
+        finally
+        {
+            window.Close();
+            app.Shutdown();
+        }
+    });
+
+    private static TextBox VisibleLoginField(ContentControl host) =>
+        Assert.Single(Visuals<TextBox>(host), input =>
+            VisualTreeHelper.GetParent(input) is StackPanel { Visibility: Visibility.Visible });
+
+    private static void AssertInputLayout(Control input)
+    {
+        var host = Assert.IsType<ScrollViewer>(input.Template.FindName("PART_ContentHost", input));
+        var presenter = Assert.Single(Visuals<ScrollContentPresenter>(host));
+        Assert.True(presenter.ActualHeight >= input.FontSize,
+            $"{input.GetType().Name} has only {presenter.ActualHeight} DIP for its text.");
+    }
+
+    private static IEnumerable<T> Visuals<T>(DependencyObject root) where T : DependencyObject
+    {
+        if (root is T match) yield return match;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            foreach (var child in Visuals<T>(VisualTreeHelper.GetChild(root, index)))
+                yield return child;
+        }
     }
 
     [Fact]

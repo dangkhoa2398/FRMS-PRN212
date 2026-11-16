@@ -277,7 +277,7 @@
                                         </Button>
                                         <TextBox Width="210" Height="32" Padding="6" Margin="0,0,8,0" ToolTip="For reservation handover enter Storage Unit ID; for return enter actual date yyyy-MM-dd"
                                                  Text="{Binding DataContext.EmployeeWorkspace.ActionInput, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}">
-                                            <TextBox.Style><Style TargetType="TextBox"><Setter Property="Visibility" Value="Collapsed"/>
+                                            <TextBox.Style><Style TargetType="TextBox" BasedOn="{StaticResource AppTextBoxStyle}"><Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     
                                                     <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="task"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/><Condition Binding="{Binding WorkType}" Value="RESERVATION_VISIT"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger>
@@ -296,7 +296,7 @@
                                         </Button>
                                         <TextBox Width="220" Height="32" Padding="6" Margin="0,0,8,0"
                                                  Text="{Binding DataContext.EmployeeWorkspace.ActionNote, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}">
-                                            <TextBox.Style><Style TargetType="TextBox">
+                                            <TextBox.Style><Style TargetType="TextBox" BasedOn="{StaticResource AppTextBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <MultiDataTrigger>
@@ -326,7 +326,7 @@
                                             </Style></Button.Style>
                                         </Button>
                                         <ComboBox Width="220" Height="32" Margin="0,0,8,0" ToolTip="Select Facility Staff" ItemsSource="{Binding DataContext.EmployeeWorkspace.FacilityStaff, RelativeSource={RelativeSource AncestorType=Window}}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding DataContext.EmployeeWorkspace.SelectedStaffId, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
-                                            <ComboBox.Style><Style TargetType="ComboBox">
+                                            <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource AppComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <MultiDataTrigger>
@@ -358,7 +358,7 @@
                                         <ComboBox Width="145" Height="32" Margin="0,0,8,0"
                                                   ItemsSource="{Binding DataContext.EmployeeWorkspace.StorageStatuses, RelativeSource={RelativeSource AncestorType=Window}}"
                                                   SelectedItem="{Binding DataContext.EmployeeWorkspace.StorageStatus, RelativeSource={RelativeSource AncestorType=Window}}">
-                                            <ComboBox.Style><Style TargetType="ComboBox">
+                                            <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource AppComboBoxStyle}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
                                                     <MultiDataTrigger>

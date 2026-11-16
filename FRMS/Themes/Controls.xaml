@@ -5,7 +5,6 @@
     <DropShadowEffect x:Key="CardShadowEffect" BlurRadius="20" Direction="270" ShadowDepth="3"
                       Color="#101F3F" Opacity="0.09"/>
     <Style TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontFamily" Value="Segoe UI"/>
     </Style>
     <Style x:Key="AppButtonStyle" TargetType="{x:Type Button}">
@@ -52,6 +51,11 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
     <Style x:Key="SidebarButtonStyle" TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
         <Setter Property="Background" Value="Transparent"/>
@@ -92,7 +96,7 @@
         <Setter Property="Padding" Value="22"/>
         <Setter Property="Effect" Value="{StaticResource CardShadowEffect}"/>
     </Style>
-    <Style TargetType="{x:Type TextBox}">
+    <Style x:Key="AppTextBoxStyle" TargetType="{x:Type TextBox}">
         <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
@@ -106,7 +110,7 @@
                     <Border x:Name="InputChrome" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        <ScrollViewer x:Name="PART_ContentHost"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
@@ -121,6 +125,7 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource AppTextBoxStyle}"/>
     <Style TargetType="{x:Type PasswordBox}">
         <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
@@ -134,7 +139,7 @@
                     <Border x:Name="InputChrome" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        <ScrollViewer x:Name="PART_ContentHost"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
@@ -149,17 +154,17 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <Style TargetType="{x:Type ComboBox}">
-        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    <!-- Native ComboBox and DatePicker templates paint system surfaces inside the controls. -->
+    <Style x:Key="AppComboBoxStyle" TargetType="{x:Type ComboBox}">
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Padding" Value="9,5"/>
         <Setter Property="MinHeight" Value="36"/>
     </Style>
+    <Style TargetType="{x:Type ComboBox}" BasedOn="{StaticResource AppComboBoxStyle}"/>
     <Style TargetType="{x:Type DatePicker}">
-        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
         <Setter Property="MinHeight" Value="36"/>
     </Style>

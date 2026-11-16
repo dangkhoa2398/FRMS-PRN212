@@ -47,6 +47,7 @@ internal sealed class FakeBackend : HttpMessageHandler
 
     public List<RequestLog> Requests { get; } = new();
     public Func<RequestLog, HttpResponseMessage>? Reply { get; set; }
+    public Func<RequestLog, CancellationToken, Task<HttpResponseMessage>>? ReplyAsync { get; set; }
 
     public HttpClient NewHttpClient() => new(this)
     {
@@ -63,6 +64,7 @@ internal sealed class FakeBackend : HttpMessageHandler
             request.Headers.Authorization?.ToString(),
             request.Content is null ? null : await request.Content.ReadAsStringAsync(ct));
         Requests.Add(captured);
+        if (ReplyAsync is not null) return await ReplyAsync(captured, ct);
         if (Reply is not null) return Reply(captured);
         if (captured.Path == "/api/v1/auth/me")
             return Json("""{"data":{"profile":{"fullName":"Demo Employee","facilityId":""" + "\"" + FacilityId + "\"" + """},"email":"staff@demo.test","phoneNumber":"0900000000"}}""");

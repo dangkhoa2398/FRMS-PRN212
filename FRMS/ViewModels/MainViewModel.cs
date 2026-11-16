@@ -112,8 +112,8 @@ public sealed class MainViewModel : ObservableObject
                 EmployeeRole = role;
                 OnPropertyChanged(nameof(IsEmployee));
                 passwordBox.Clear();
-                IsAuthenticated = true;
                 await EmployeeWorkspace.InitializeAsync(role);
+                IsAuthenticated = true;
             }
             else
             {

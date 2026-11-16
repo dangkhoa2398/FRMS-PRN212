@@ -205,6 +205,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         Role = role;
         OnPropertyChanged(nameof(IsManager));
         OnPropertyChanged(nameof(IsStaff));
+        string? profileError = null;
         try
         {
             using var doc = await _api.GetAsync("api/v1/auth/me");
@@ -218,14 +219,19 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            Message = "Employee profile could not be loaded: " + ex.Message;
+            profileError = "Employee profile could not be loaded: " + ex.Message;
         }
         await NavigateAsync("home");
+        if (profileError is not null)
+            Message = profileError;
     }
 
     public void Reset()
     {
-        _loading?.Cancel();
+        var loading = _loading;
+        _loading = null;
+        loading?.Cancel();
+        IsLoading = false;
         Items.Clear();
         _allItems.Clear();
         DisplayName = "Employee";
@@ -235,6 +241,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         Phone = "";
         Role = "";
         OnPropertyChanged(nameof(IsManager));
+        OnPropertyChanged(nameof(IsStaff));
         Message = "";
     }
 
@@ -304,6 +311,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         Title = title;
         Description = description;
         Message = "Loading...";
+        IsLoading = path is not null;
         if (Route == "home")
         {
             Message = "Employee details are loaded from the authenticated profile.";
@@ -312,7 +320,6 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             return;
         }
         if (path is null) { Message = "Manager facility ID is missing from the authenticated profile; storage units cannot be loaded."; _loading = null; cts.Dispose(); return; }
-        IsLoading = true;
         try
         {
             using var doc = await _api.GetAsync(path, cts.Token);
@@ -360,6 +367,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             }
             if (Route == "access" && IsStaff) records = records.Where(x => x.IsVisit).ToList();
             if (IsManager && Route == "support") await LoadFacilityStaffAsync(cts.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(_loading, cts)) return;
             UpdateFilters(records);
             Message = records.Count == 0
                 ? (Route == "task" ? "No work items found in the available history." :

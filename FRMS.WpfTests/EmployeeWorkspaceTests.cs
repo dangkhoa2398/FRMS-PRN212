@@ -57,6 +57,37 @@ public sealed class EmployeeWorkspaceTests
         });
 
     [Fact]
+    public Task HomeNavigation_ClearsLoadingWhenItCancelsAnOpenRequest() => StaTest.RunAsync(async () =>
+    {
+        var server = new FakeBackend();
+        var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
+        server.ReplyAsync = async (_, token) =>
+        {
+            await Task.Delay(Timeout.Infinite, token);
+            return FakeBackend.Json();
+        };
+
+        var pending = vm.NavigateCommand.ExecuteAsync("task");
+        Assert.True(vm.IsLoading);
+        await vm.NavigateCommand.ExecuteAsync("home");
+        await pending;
+
+        Assert.True(vm.IsHome);
+        Assert.False(vm.IsLoading);
+        Assert.Empty(vm.Items);
+    });
+
+    [Fact]
+    public Task Initialize_PreservesProfileErrorOnHome() => StaTest.RunAsync(async () =>
+    {
+        var server = new FakeBackend { Reply = _ => FakeBackend.Json(status: HttpStatusCode.ServiceUnavailable) };
+        var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
+
+        Assert.True(vm.IsHome);
+        Assert.Contains("Employee profile could not be loaded", vm.Message);
+    });
+
+    [Fact]
     public Task Staff_AccessShowsOnlyVisitsAndCanFilterByDate() => StaTest.RunAsync(async () =>
     {
         var server = new FakeBackend

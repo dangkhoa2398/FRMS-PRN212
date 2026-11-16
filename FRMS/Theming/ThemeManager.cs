@@ -51,11 +51,11 @@ public static class ThemeManager
             var existing = dictionaries.FirstOrDefault(x =>
                 x.Source?.OriginalString.EndsWith("Themes/Light.xaml", StringComparison.OrdinalIgnoreCase) == true ||
                 x.Source?.OriginalString.EndsWith("Themes/Dark.xaml", StringComparison.OrdinalIgnoreCase) == true);
+            var assemblyName = typeof(ThemeManager).Assembly.GetName().Name;
+            var palette = dark ? "Dark" : "Light";
             var replacement = new ResourceDictionary
             {
-                Source = new Uri(dark
-                    ? "pack://application:,,,/FRMS;component/Themes/Dark.xaml"
-                    : "pack://application:,,,/FRMS;component/Themes/Light.xaml",
+                Source = new Uri($"pack://application:,,,/{assemblyName};component/Themes/{palette}.xaml",
                     UriKind.Absolute)
             };
             if (existing is null)
