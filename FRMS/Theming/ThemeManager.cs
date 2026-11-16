@@ -53,7 +53,10 @@ public static class ThemeManager
                 x.Source?.OriginalString.EndsWith("Themes/Dark.xaml", StringComparison.OrdinalIgnoreCase) == true);
             var replacement = new ResourceDictionary
             {
-                Source = new Uri(dark ? "Themes/Dark.xaml" : "Themes/Light.xaml", UriKind.Relative)
+                Source = new Uri(dark
+                    ? "pack://application:,,,/FRMS;component/Themes/Dark.xaml"
+                    : "pack://application:,,,/FRMS;component/Themes/Light.xaml",
+                    UriKind.Absolute)
             };
             if (existing is null)
                 dictionaries.Insert(0, replacement);

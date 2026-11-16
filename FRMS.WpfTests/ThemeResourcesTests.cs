@@ -37,10 +37,7 @@ public sealed class ThemeResourcesTests
     [Fact]
     public Task SharedControlDictionary_ContainsButtonsAndCardStyles() => StaTest.RunAsync(() =>
     {
-        var dictionary = new ResourceDictionary
-        {
-            Source = new Uri("/FRMS;component/Themes/Controls.xaml", UriKind.Relative)
-        };
+        var dictionary = Load("Controls");
         Assert.IsType<Style>(dictionary["AppButtonStyle"]);
         Assert.IsType<Style>(dictionary["GhostButtonStyle"]);
         Assert.IsType<Style>(dictionary["SidebarButtonStyle"]);
@@ -63,6 +60,12 @@ public sealed class ThemeResourcesTests
         Assert.Equal(expected, result);
     }
 
-    private static ResourceDictionary Load(string name) =>
-        new() { Source = new Uri($"/FRMS;component/Themes/{name}.xaml", UriKind.Relative) };
+    private static ResourceDictionary Load(string name)
+    {
+        // Initialize WPF's pack URI handler even when xUnit starts before
+        // the desktop Application. The production application does this at startup.
+        var source = new Uri($"/FRMS;component/Themes/{name}.xaml", UriKind.Relative);
+        using (Application.GetResourceStream(source).Stream) { }
+        return new ResourceDictionary { Source = source };
+    }
 }
