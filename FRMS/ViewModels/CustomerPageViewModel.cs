@@ -21,6 +21,9 @@ public sealed class CustomerRecord : ObservableObject
     public string FacilityId { get; init; } = "";
     public string FacilityName { get; set; } = "";
     public string RelatedEntityId { get; init; } = "";
+    public Guid InvoiceId { get; init; }
+    public bool CanPayInvoice => InvoiceId != Guid.Empty
+        && Title is "DEPOSIT" or "RENTAL_FEE" && Status is "UNPAID" or "OVERDUE";
     public string RelatedStorage { get; set; } = "";
     public string ContractId { get; init; } = "";
     public bool HasContract => Guid.TryParse(ContractId, out _);

@@ -48,7 +48,7 @@ public sealed class MainViewModelTests
             return FakeBackend.Json("{\"data\":{\"items\":[{\"supportTicketId\":\"" + FakeBackend.TicketId +
                 "\",\"category\":\"OTHER\",\"status\":\"OPEN\"}]}}");
         if (r.Path == "/api/v1/invoices")
-            return FakeBackend.Json("""{"data":{"items":[{"invoiceType":"RENTAL","status":"UNPAID","amountDue":100000}]}}""");
+            return FakeBackend.Json("""{"data":{"items":[{"invoiceId":"99999999-9999-9999-9999-999999999999","invoiceType":"RENTAL_FEE","status":"UNPAID","amountDue":100000}]}}""");
         return FakeBackend.Json("""{"data":{"items":[]}}""");
     }
 
@@ -131,6 +131,14 @@ public sealed class MainViewModelTests
                     await LayoutAsync();
                     Assert.Equal(route, vm.CurrentPage.Route);
                     Assert.Equal(Visibility.Visible, customerHost.Visibility);
+                    if (route == "invoices")
+                    {
+                        var pay = Assert.Single(Visuals<Button>(customerHost), button => Equals(button.Content, "Pay with payOS"));
+                        Assert.Equal(Visibility.Visible, pay.Visibility);
+                        Assert.Same(vm.PayInvoiceCommand, pay.Command);
+                        Assert.Equal(Guid.Parse("99999999-9999-9999-9999-999999999999"),
+                            Assert.IsType<CustomerRecord>(pay.CommandParameter).InvoiceId);
+                    }
                 }
                 vm.LogoutCommand.Execute(null);
 

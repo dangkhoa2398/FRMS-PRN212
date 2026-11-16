@@ -19,5 +19,6 @@
     <Compile Include="../FRMS/Services/FrmsHealthService.cs" Link="Production/FrmsHealthService.cs" />
     <Compile Include="../FRMS/Services/IFrmsHealthService.cs" Link="Production/IFrmsHealthService.cs" />
     <Compile Include="../FRMS/ViewModels/CustomerPageViewModel.cs" Link="Production/CustomerPageViewModel.cs" />
+    <Compile Include="../FRMS/ViewModels/PaymentQrViewModel.cs" Link="Production/PaymentQrViewModel.cs" />
   </ItemGroup>
 </Project>

@@ -21,6 +21,8 @@ public sealed class MainViewModel : ObservableObject
     private CancellationTokenSource? _navigationCts;
     private string _currentRoute = "home";
     private string _pendingContractId = "";
+    private readonly Dictionary<Guid, PaymentQrViewModel> _paymentSessions = new();
+    private CancellationTokenSource? _paymentDialogLifetime;
 
     public MainViewModel(CustomerApiService api, IFrmsHealthService health)
     {
@@ -37,6 +39,7 @@ public sealed class MainViewModel : ObservableObject
         CreateReservationCommand = new AsyncRelayCommand(CreateReservationAsync);
         SelectFacilityCommand = new AsyncRelayCommand<CustomerRecord>(SelectFacilityAsync);
         CreateSupportTicketCommand = new AsyncRelayCommand(CreateSupportTicketAsync);
+        PayInvoiceCommand = new AsyncRelayCommand<CustomerRecord>(PayInvoiceAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
         ToggleThemeCommand = new RelayCommand(ToggleTheme);
     }
@@ -91,6 +94,28 @@ public sealed class MainViewModel : ObservableObject
     public IAsyncRelayCommand<CustomerRecord> SelectFacilityCommand { get; }
     public IAsyncRelayCommand CreateSupportTicketCommand { get; }
     public IAsyncRelayCommand CheckConnectionCommand { get; }
+    public IAsyncRelayCommand<CustomerRecord> PayInvoiceCommand { get; }
+    public event Action<PaymentQrViewModel, CancellationToken>? PaymentRequested;
+
+    private async Task PayInvoiceAsync(CustomerRecord? record)
+    {
+        if (!IsAuthenticated || IsEmployee || !CurrentPage.IsInvoices || record?.CanPayInvoice != true
+            || PaymentRequested is null)
+            return;
+
+        if (!_paymentSessions.TryGetValue(record.InvoiceId, out var payment))
+        {
+            payment = new PaymentQrViewModel(_api, record.InvoiceId);
+            _paymentSessions.Add(record.InvoiceId, payment);
+        }
+
+        using var lifetime = new CancellationTokenSource();
+        _paymentDialogLifetime = lifetime;
+        try { PaymentRequested.Invoke(payment, lifetime.Token); }
+        finally { _paymentDialogLifetime = null; }
+        if ((payment.Succeeded || payment.InvoiceNeedsRefresh) && IsAuthenticated && CurrentPage.IsInvoices)
+            await RefreshAsync();
+    }
 
     private async Task LoginAsync(PasswordBox? passwordBox)
     {
@@ -134,6 +159,8 @@ public sealed class MainViewModel : ObservableObject
 
     private void Logout()
     {
+        _paymentDialogLifetime?.Cancel();
+        _paymentSessions.Clear();
         _navigationCts?.Cancel();
         _api.Logout();
         EmployeeWorkspace.Reset();
@@ -350,6 +377,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task LoadPageAsync(string route, bool runStorageSearch, string? storageQuery = null, CustomerPageViewModel? existingPage = null)
     {
+        if (route != "invoices") _paymentDialogLifetime?.Cancel();
         if (!IsAuthenticated) return;
         _currentRoute = route;
         var (title, description, path) = route switch
@@ -568,6 +596,7 @@ public sealed class MainViewModel : ObservableObject
             "invoices" => new CustomerRecord
             {
                 Title = Field(element, "invoiceType", "type"),
+                InvoiceId = Guid.TryParse(Field(element, "invoiceId"), out var invoiceId) ? invoiceId : Guid.Empty,
                 Subtitle = "Due: " + DateLabel(Field(element, "dueDate", "billingMonth", "createdAt")),
                 Status = status,
                 Amount = Money(Field(element, "amountDue", "totalAmount", "amount")),

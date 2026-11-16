@@ -63,6 +63,46 @@ public sealed class CustomerApiService(HttpClient http)
         return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
     }
 
+    public async Task<InvoicePayment> StartPayOsAsync(Guid invoiceId, Guid key, CancellationToken token)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"api/v1/invoices/{invoiceId:D}/payments/payos");
+        request.Headers.Add("Idempotency-Key", key.ToString("D"));
+        using var response = await http.SendAsync(request, token);
+        if (response.StatusCode is System.Net.HttpStatusCode.ServiceUnavailable or System.Net.HttpStatusCode.Conflict)
+        {
+            try
+            {
+                using var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
+                if (TryGetString(error.RootElement, "code", out var code))
+                    throw new PaymentRequestException(response.StatusCode, code);
+            }
+            catch (JsonException) { }
+        }
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<PaymentEnvelope>(cancellationToken: token);
+        return ValidatePayment(result?.Data, invoiceId);
+    }
+
+    public async Task<InvoicePayment> GetPaymentAsync(Guid paymentId, Guid invoiceId, CancellationToken token)
+    {
+        using var doc = await GetAsync($"api/v1/payments/{paymentId:D}", token);
+        var result = doc.RootElement.Deserialize<PaymentEnvelope>(JsonSerializerOptions.Web);
+        var payment = ValidatePayment(result?.Data, invoiceId);
+        if (payment.PaymentId != paymentId)
+            throw new JsonException("The payment response refers to a different attempt.");
+        return payment;
+    }
+
+    private static InvoicePayment ValidatePayment(InvoicePayment? payment, Guid invoiceId)
+    {
+        if (payment is null || payment.PaymentId == Guid.Empty || payment.InvoiceId != invoiceId
+            || payment.PaymentMethod != "PAYOS" || payment.Status is not ("PENDING" or "SUCCESS" or "FAILED"))
+            throw new JsonException("Invalid payOS payment response.");
+        return payment;
+    }
+
+    private sealed record PaymentEnvelope(InvoicePayment? Data);
+
     public async Task CreateAccessVisitAsync(
         Guid contractId, DateTime visitDate, CancellationToken cancellationToken = default)
     {
@@ -144,4 +184,16 @@ public sealed class CustomerApiService(HttpClient http)
         value = property.GetString() ?? "";
         return !string.IsNullOrWhiteSpace(value);
     }
+}
+
+public sealed record InvoicePayment(Guid PaymentId, Guid InvoiceId, decimal Amount, string PaymentMethod,
+    string Status, string? PaymentUrl = null, string? QrCode = null, DateTimeOffset? ExpiresAt = null)
+{
+    public override string ToString() => nameof(InvoicePayment);
+}
+
+internal sealed class PaymentRequestException(System.Net.HttpStatusCode status, string code)
+    : HttpRequestException("The server rejected the payment request.", null, status)
+{
+    public string Code { get; } = code;
 }
