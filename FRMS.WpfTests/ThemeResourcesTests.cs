@@ -1,6 +1,5 @@
 using System.Globalization;
-using System.Windows;
-using System.Windows.Media;
+using System.Xml.Linq;
 using FRMS.PRN212.WpfConnection.Theming;
 using Xunit;
 
@@ -8,31 +7,36 @@ namespace FRMS.WpfTests;
 
 public sealed class ThemeResourcesTests
 {
+    private static readonly XNamespace Wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+    private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+
     [Fact]
-    public Task LightAndDarkThemes_ShareEveryPaletteKeyAndUseDistinctColors() => StaTest.RunAsync(() =>
+    public void LightAndDarkThemes_HaveIdenticalSemanticKeysAndDistinctSurfaces()
     {
-        var light = Load("Light");
-        var dark = Load("Dark");
-        var keys = light.Keys.Cast<object>().ToArray();
+        var light = Palette("Light.xaml");
+        var dark = Palette("Dark.xaml");
+        Assert.True(light.Count >= 20);
+        Assert.Equal(light.Keys.OrderBy(x => x), dark.Keys.OrderBy(x => x));
+        Assert.NotEqual(light["PageBackgroundBrush"], dark["PageBackgroundBrush"]);
+        Assert.NotEqual(light["SurfaceBrush"], dark["SurfaceBrush"]);
+        Assert.All(light.Values, value => Assert.Matches("^#[0-9A-Fa-f]{6,8}$", value));
+        Assert.All(dark.Values, value => Assert.Matches("^#[0-9A-Fa-f]{6,8}$", value));
+    }
 
-        Assert.Equal(keys.Length, dark.Keys.Count);
-        Assert.True(keys.Length >= 20);
-        foreach (var key in keys)
-        {
-            Assert.True(dark.Contains(key), $"Theme is missing shared resource: {key}");
-            Assert.IsType<SolidColorBrush>(light[key]);
-            Assert.IsType<SolidColorBrush>(dark[key]);
-        }
-
-        var lightBackground = Assert.IsType<SolidColorBrush>(light["PageBackgroundBrush"]);
-        var darkBackground = Assert.IsType<SolidColorBrush>(dark["PageBackgroundBrush"]);
-        var lightSurface = Assert.IsType<SolidColorBrush>(light["SurfaceBrush"]);
-        var darkSurface = Assert.IsType<SolidColorBrush>(dark["SurfaceBrush"]);
-
-        Assert.NotEqual(lightBackground.Color, darkBackground.Color);
-        Assert.NotEqual(lightSurface.Color, darkSurface.Color);
-        return Task.CompletedTask;
-    });
+    [Fact]
+    public void SharedStyles_DeclareButtonsCardsAndRouteConverter()
+    {
+        var doc = Asset("Controls.xaml");
+        var keys = doc.Root!.Elements()
+            .Select(x => (string?)x.Attribute(Xaml + "Key"))
+            .Where(x => x is not null)
+            .ToHashSet();
+        Assert.Contains("AppButtonStyle", keys);
+        Assert.Contains("SidebarButtonStyle", keys);
+        Assert.Contains("GhostButtonStyle", keys);
+        Assert.Contains("CardBorderStyle", keys);
+        Assert.Contains("RouteMatchConverter", keys);
+    }
 
     [Theory]
     [InlineData("storage", "storage", true)]
@@ -43,11 +47,16 @@ public sealed class ThemeResourcesTests
     public void ActiveNavigationRoute_IsCaseInsensitiveAndSafe(string? current, string target, bool expected)
     {
         var converter = new RouteMatchConverter();
-        var result = converter.Convert(new object[] { current ?? DependencyProperty.UnsetValue, target },
+        var result = converter.Convert(new object[] { current ?? System.Windows.DependencyProperty.UnsetValue, target },
             typeof(bool), new object(), CultureInfo.InvariantCulture);
         Assert.Equal(expected, result);
     }
 
-    private static ResourceDictionary Load(string name) =>
-        new() { Source = new Uri($"/FRMS;component/Themes/{name}.xaml", UriKind.Relative) };
+    private static Dictionary<string, string> Palette(string fileName) =>
+        Asset(fileName).Root!.Elements(Wpf + "SolidColorBrush").ToDictionary(
+            element => (string)element.Attribute(Xaml + "Key")!,
+            element => (string)element.Attribute("Color")!);
+
+    private static XDocument Asset(string name) =>
+        XDocument.Load(Path.Combine(AppContext.BaseDirectory, "TestAssets", name));
 }

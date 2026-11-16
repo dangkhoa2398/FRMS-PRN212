@@ -15,4 +15,10 @@
   <ItemGroup>
     <ProjectReference Include="../FRMS/FRMS.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Inspect theme XML in CI without depending on an interactive WPF Application. -->
+    <None Include="../FRMS/Themes/Light.xaml" Link="TestAssets/Light.xaml" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="../FRMS/Themes/Dark.xaml" Link="TestAssets/Dark.xaml" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="../FRMS/Themes/Controls.xaml" Link="TestAssets/Controls.xaml" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
 </Project>
