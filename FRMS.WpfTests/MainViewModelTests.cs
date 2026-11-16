@@ -295,9 +295,23 @@ public sealed class MainViewModelTests
     public Task CustomerContracts_DisplayFacilityNameInsteadOfStorageId() => StaTest.RunAsync(async () =>
     {
         var server = NewBackend(r => r.Path == "/api/v1/contracts"
-            ? FakeBackend.Json("{\\"data\\":{\\"items\\":[{\\"contractId\\":\\"" + FakeBackend.ContractId +
-                "\\",\\"storageUnitId\\":\\"11111111-1111-1111-1111-111111111111\\",\\"facilityId\\":\\"" + FakeBackend.FacilityId +
-                "\\",\\"unitCode\\":\\"A-101\\",\\"status\\":\\"ACTIVE\\"}]}}")
+            ? FakeBackend.Json(JsonSerializer.Serialize(new
+            {
+                data = new
+                {
+                    items = new[]
+                    {
+                        new
+                        {
+                            contractId = FakeBackend.ContractId,
+                            storageUnitId = "11111111-1111-1111-1111-111111111111",
+                            facilityId = FakeBackend.FacilityId,
+                            unitCode = "A-101",
+                            status = "ACTIVE"
+                        }
+                    }
+                }
+            }))
             : null);
         var vm = NewMain(server);
         await SignInCustomerAsync(vm);
