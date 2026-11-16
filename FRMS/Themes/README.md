@@ -22,4 +22,4 @@ Views should use `{DynamicResource PageBackgroundBrush}`, `{DynamicResource Surf
 
 ## Verification
 
-The Windows WPF test suite validates that both palettes expose the same keys and that shared styles can be loaded. The CI WPF build also validates the compiled XAML. These checks do not replace manual visual review at different Windows scaling factors, screen sizes and contrast settings.
+The Windows WPF tests validate that both palettes expose the same keys and that active navigation route matching works. The CI WPF build validates the compiled shared styles and view XAML. These checks do not replace manual visual review at different Windows scaling factors, screen sizes and contrast settings.
