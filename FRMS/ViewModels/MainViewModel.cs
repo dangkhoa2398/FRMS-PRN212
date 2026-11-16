@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FRMS.PRN212.WpfConnection.Services;
+using FRMS.PRN212.WpfConnection.Theming;
 
 namespace FRMS.PRN212.WpfConnection.ViewModels;
 
@@ -37,9 +38,21 @@ public sealed class MainViewModel : ObservableObject
         SelectFacilityCommand = new AsyncRelayCommand<CustomerRecord>(SelectFacilityAsync);
         CreateSupportTicketCommand = new AsyncRelayCommand(CreateSupportTicketAsync);
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
+        ToggleThemeCommand = new RelayCommand(ToggleTheme);
     }
 
     public EmployeeWorkspaceViewModel EmployeeWorkspace { get; }
+
+    public string ThemeToggleText => ThemeManager.IsDark ? "Light mode" : "Dark mode";
+    public bool IsDarkTheme => ThemeManager.IsDark;
+    public IRelayCommand ToggleThemeCommand { get; }
+
+    private void ToggleTheme()
+    {
+        ThemeManager.Toggle();
+        OnPropertyChanged(nameof(ThemeToggleText));
+        OnPropertyChanged(nameof(IsDarkTheme));
+    }
 
     private string _loginMode = "Customer";
     public string LoginMode { get => _loginMode; set => SetProperty(ref _loginMode, value); }

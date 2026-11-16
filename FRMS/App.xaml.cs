@@ -3,6 +3,7 @@ using System.Windows;
 using FRMS.PRN212.WpfConnection.Services;
 using FRMS.PRN212.WpfConnection.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using FRMS.PRN212.WpfConnection.Theming;
 
 namespace FRMS.PRN212.WpfConnection;
 
@@ -13,6 +14,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ThemeManager.Initialize();
         var services = new ServiceCollection();
         services.AddHttpClient<IFrmsHealthService, FrmsHealthService>(client =>
         {
