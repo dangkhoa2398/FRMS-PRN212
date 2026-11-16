@@ -2,28 +2,23 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
-        <Style x:Key="Panel" TargetType="Border">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="BorderBrush" Value="#E2E8F0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="0,0,0,14"/>
+        <Style x:Key="Panel" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+            <Setter Property="Margin" Value="0,0,0,16"/>
         </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid Margin="0,0,0,18">
             <StackPanel>
-                <TextBlock Text="{Binding EmployeeWorkspace.Title}" FontSize="28" FontWeight="Bold" Foreground="#0F172A"/>
-                <TextBlock Text="{Binding EmployeeWorkspace.Description}" Foreground="#64748B" Margin="0,7,0,0"/>
+                <TextBlock Text="{Binding EmployeeWorkspace.Title}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="{Binding EmployeeWorkspace.Description}" Foreground="{DynamicResource TextMutedBrush}" Margin="0,7,0,0"/>
             </StackPanel>
             <Button Content="Refresh" HorizontalAlignment="Right" VerticalAlignment="Center"
                     Command="{Binding EmployeeWorkspace.RefreshCommand}" Padding="16,10"
-                    Background="#1D4ED8" Foreground="White"/>
+                    Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource OnAccentBrush}"/>
         </Grid>
         <StackPanel Grid.Row="1" Margin="0,0,0,14">
-            <ProgressBar IsIndeterminate="True" Height="3">
+            <ProgressBar IsIndeterminate="True" Height="3" Foreground="{DynamicResource AccentBrush}">
                 <ProgressBar.Style><Style TargetType="ProgressBar">
                     <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
@@ -33,7 +28,7 @@
                     </Style.Triggers>
                 </Style></ProgressBar.Style>
             </ProgressBar>
-            <TextBlock Text="{Binding EmployeeWorkspace.Message}" Foreground="#64748B" Margin="0,8,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding EmployeeWorkspace.Message}" Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel>
         <Border Grid.Row="2" Padding="24">
             <Border.Style>
@@ -47,26 +42,26 @@
                 </Style>
             </Border.Style>
             <StackPanel>
-                <TextBlock Text="Employee Information" FontSize="21" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,20"/>
-                <TextBlock Text="Full name" Foreground="#64748B"/>
-                <TextBlock Text="{Binding EmployeeWorkspace.DisplayName}" FontWeight="SemiBold" FontSize="20" Margin="0,5,0,18" Foreground="#0F172A"/>
+                <TextBlock Text="Employee Information" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,20"/>
+                <TextBlock Text="Full name" Foreground="{DynamicResource TextMutedBrush}"/>
+                <TextBlock Text="{Binding EmployeeWorkspace.DisplayName}" FontWeight="SemiBold" FontSize="20" Margin="0,5,0,18" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 <UniformGrid Columns="2">
                     <StackPanel Margin="0,0,18,16">
-                        <TextBlock Text="Email" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding EmployeeWorkspace.Email}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
+                        <TextBlock Text="Email" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.Email}" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,18,16">
-                        <TextBlock Text="Phone" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding EmployeeWorkspace.Phone}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
+                        <TextBlock Text="Phone" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.Phone}" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,18,0">
-                        <TextBlock Text="Role" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding EmployeeWorkspace.Role}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0"/>
+                        <TextBlock Text="Role" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.Role}" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,18,0">
-                        <TextBlock Text="Assigned facility" Foreground="#64748B"/>
-                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityName}" FontSize="15" Foreground="#0F172A" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityId}" FontSize="11" Foreground="#94A3B8" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="Assigned facility" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityName}" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding EmployeeWorkspace.FacilityId}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </UniformGrid>
             </StackPanel>
@@ -91,7 +86,7 @@
                     <ColumnDefinition Width="175"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Margin="0,0,12,0">
-                    <TextBlock Text="Status" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <TextBlock Text="Status" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
                     <ComboBox Height="36" ItemsSource="{Binding EmployeeWorkspace.StatusOptions}"
                               SelectedItem="{Binding EmployeeWorkspace.SelectedStatus}"/>
                 </StackPanel>
@@ -106,12 +101,12 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <TextBlock Text="Storage Type / Category" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <TextBlock Text="Storage Type / Category" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
                     <ComboBox Height="36" ItemsSource="{Binding EmployeeWorkspace.CategoryOptions}"
                               SelectedItem="{Binding EmployeeWorkspace.SelectedCategory}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Margin="0,0,12,0">
-                    <TextBlock Text="Search" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <TextBlock Text="Search" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
                     <TextBox Height="36" Padding="10,7" Text="{Binding EmployeeWorkspace.SearchText, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="3">
@@ -125,7 +120,7 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <TextBlock Text="Date filter (optional)" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <TextBlock Text="Date filter (optional)" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
                     <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate, Mode=TwoWay}"/>
                     <Button Content="Clear date / All dates" Padding="8,4" Margin="0,5,0,0"
                             Command="{Binding EmployeeWorkspace.ClearWorkDateFilterCommand}"/>
@@ -145,19 +140,19 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <TextBlock Text="Create a physical storage unit" FontWeight="SemiBold" Foreground="#0F172A" Margin="0,0,0,4"/>
-                    <TextBlock Text="Choose its storage type, enter a unique code and describe where the unit is located." Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <TextBlock Text="Create a physical storage unit" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="Choose its storage type, enter a unique code and describe where the unit is located." Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                     <WrapPanel>
                         <StackPanel Width="245" Margin="0,0,12,10">
-                            <TextBlock Text="Storage type (required)" Foreground="#475569" Margin="0,0,0,5"/>
+                            <TextBlock Text="Storage type (required)" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,5"/>
                             <ComboBox Height="34" ToolTip="Select a named storage type, e.g. Small Private" ItemsSource="{Binding EmployeeWorkspace.AvailableUnitTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EmployeeWorkspace.NewUnitTypeId, Mode=TwoWay}"/>
                         </StackPanel>
                         <StackPanel Width="160" Margin="0,0,12,10">
-                            <TextBlock Text="Unit code (required)" Foreground="#475569" Margin="0,0,0,5"/>
+                            <TextBlock Text="Unit code (required)" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,5"/>
                             <TextBox Height="34" Padding="7" ToolTip="Unique physical unit code, e.g. A-103" Text="{Binding EmployeeWorkspace.NewUnitCode, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                         <StackPanel Width="265" Margin="0,0,12,10">
-                            <TextBlock Text="Location (optional)" Foreground="#475569" Margin="0,0,0,5"/>
+                            <TextBlock Text="Location (optional)" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,5"/>
                             <TextBox Height="34" Padding="7" ToolTip="Location of the unit, e.g. Floor 1 - Row A" Text="{Binding EmployeeWorkspace.NewUnitLocation, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                         <Button Content="Create Storage Unit" Padding="12,7" Height="34" Margin="0,20,0,10" Command="{Binding EmployeeWorkspace.CreateStorageUnitCommand}"/>
@@ -180,21 +175,21 @@
                 <ItemsControl ItemsSource="{Binding EmployeeWorkspace.Items}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="9,17">
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="9,17">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="{Binding Title}" Foreground="#0F172A" FontSize="18" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding Subtitle}" Foreground="#64748B" Margin="0,7,0,0"/>
+                                            <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="18" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource TextMutedBrush}" Margin="0,7,0,0"/>
                                         </StackPanel>
-                                        <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="12" Padding="10,5">
-                                            <TextBlock Text="{Binding Status}" Foreground="#0369A1"/>
+                                        <Border Grid.Column="1" Background="{DynamicResource StatusBackgroundBrush}" CornerRadius="12" Padding="10,5">
+                                            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StatusForegroundBrush}"/>
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="{Binding Detail1}" Foreground="#475569" Margin="0,12,0,0"/>
-                                    <TextBlock Text="{Binding Detail2}" Foreground="#475569" Margin="0,5,0,0"/>
-                                    <TextBlock Text="{Binding Description}" Foreground="#334155" TextWrapping="Wrap" Margin="0,9,0,0"/>
+                                    <TextBlock Text="{Binding Detail1}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,0"/>
+                                    <TextBlock Text="{Binding Detail2}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
                                     <StackPanel Margin="0,12,0,0">
                                         <StackPanel.Style>
                                             <Style TargetType="StackPanel">
@@ -210,8 +205,8 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Style>
-                                        <TextBlock Text="Inspection – check the unit condition. Claim it before completing if it is not yet assigned." Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,7"/>
-                                        <TextBlock Text="Condition note (required to complete)" Foreground="#64748B" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Inspection – check the unit condition. Claim it before completing if it is not yet assigned." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+                                        <TextBlock Text="Condition note (required to complete)" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,4"/>
                                         <TextBox Text="{Binding InspectionNote, UpdateSourceTrigger=PropertyChanged}" Height="56" AcceptsReturn="True" TextWrapping="Wrap" Padding="7" VerticalScrollBarVisibility="Auto"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                             <Button Content="Claim inspection" Padding="12,7" Margin="0,0,8,0"
