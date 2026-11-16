@@ -292,6 +292,25 @@ public sealed class MainViewModelTests
         });
 
     [Fact]
+    public Task CustomerContracts_DisplayFacilityNameInsteadOfStorageId() => StaTest.RunAsync(async () =>
+    {
+        var server = NewBackend(r => r.Path == "/api/v1/contracts"
+            ? FakeBackend.Json("{\\"data\\":{\\"items\\":[{\\"contractId\\":\\"" + FakeBackend.ContractId +
+                "\\",\\"storageUnitId\\":\\"11111111-1111-1111-1111-111111111111\\",\\"facilityId\\":\\"" + FakeBackend.FacilityId +
+                "\\",\\"unitCode\\":\\"A-101\\",\\"status\\":\\"ACTIVE\\"}]}}")
+            : null);
+        var vm = NewMain(server);
+        await SignInCustomerAsync(vm);
+        await vm.NavigateCommand.ExecuteAsync("contracts");
+
+        var record = Assert.Single(vm.CurrentPage.Records);
+        Assert.Equal("Demo Facility", record.FacilityName);
+        Assert.Equal(FakeBackend.FacilityId, record.FacilityId);
+        Assert.DoesNotContain("Storage ID", record.Detail1);
+        Assert.Contains(server.Requests, r => r.Path == "/api/v1/facilities/" + FakeBackend.FacilityId);
+    });
+
+    [Fact]
     public Task CustomerStorage_SearchAppliesFacilityModeSizeAndPeriod() => StaTest.RunAsync(async () =>
     {
         var server = NewBackend();
