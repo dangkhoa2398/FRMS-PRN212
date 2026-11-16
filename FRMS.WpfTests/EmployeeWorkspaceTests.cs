@@ -116,8 +116,10 @@ public sealed class EmployeeWorkspaceTests
         Assert.True(vm.ShowDateFilter);
     });
 
-    [Fact]
-    public Task Staff_AccessCanLoadVisitMissingFromAllDatesAndClearLookup() => StaTest.RunAsync(async () =>
+    [Theory]
+    [InlineData("access")]
+    [InlineData("task")]
+    public Task Staff_CanLoadVisitMissingFromAllDatesAndClearLookup(string route) => StaTest.RunAsync(async () =>
     {
         const string path = "/api/v1/staff/work-items";
         var server = new FakeBackend { Reply = request =>
@@ -135,7 +137,7 @@ public sealed class EmployeeWorkspaceTests
                 """);
         }};
         var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
-        await vm.NavigateCommand.ExecuteAsync("access");
+        await vm.NavigateCommand.ExecuteAsync(route);
         Assert.Equal("RETURN_VISIT", Assert.Single(vm.Items).WorkType);
 
         vm.SelectedDate = new DateTime(2026, 11, 18);
@@ -150,6 +152,7 @@ public sealed class EmployeeWorkspaceTests
 
         await vm.ClearWorkDateFilterCommand.ExecuteAsync(null);
         Assert.Null(vm.SelectedDate);
+        Assert.Equal(route, vm.Route);
         Assert.Equal("RETURN_VISIT", Assert.Single(vm.Items).WorkType);
         Assert.DoesNotContain("&date=", server.Requests.Last(request => request.Path == path).Query);
     });

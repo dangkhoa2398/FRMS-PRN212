@@ -128,7 +128,7 @@
                             <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding EmployeeWorkspace.CanLoadVisitDate}" Value="True">
+                                    <DataTrigger Binding="{Binding EmployeeWorkspace.CanLoadWorkDate}" Value="True">
                                         <Setter Property="Visibility" Value="Visible"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding EmployeeWorkspace.SelectedDate}" Value="{x:Null}">

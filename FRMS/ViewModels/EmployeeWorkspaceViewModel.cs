@@ -101,7 +101,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public bool ShowFilters => Route != "home";
     public bool ShowCategoryFilter => Route != "reservations" && Route != "home";
     public bool ShowDateFilter => Route is "access" or "task";
-    public bool CanLoadVisitDate => IsStaff && Route == "access";
+    public bool CanLoadWorkDate => IsStaff && ShowDateFilter;
     private DateTime _taskDate = DateTime.Today;
     public DateTime TaskDate { get => _taskDate; set => SetProperty(ref _taskDate, value); }
     private string _searchText = "";
@@ -275,14 +275,14 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     {
         var hadDate = SelectedDate.HasValue;
         SelectedDate = null;
-        if (hadDate && CanLoadVisitDate)
-            await NavigateAsync("access");
+        if (hadDate && CanLoadWorkDate)
+            await NavigateAsync(Route);
     }
 
-    private static string StaffWorkItemsPath(int page, DateTime? visitDate = null)
+    private static string StaffWorkItemsPath(int page, DateTime? workDate = null)
     {
         var path = $"api/v1/staff/work-items?allDates=true&includeHistory=true&page={page}&pageSize=100";
-        return visitDate is { } date
+        return workDate is { } date
             ? path + "&date=" + date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
             : path;
     }
@@ -300,7 +300,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowFilters));
         OnPropertyChanged(nameof(ShowCategoryFilter));
         OnPropertyChanged(nameof(ShowDateFilter));
-        OnPropertyChanged(nameof(CanLoadVisitDate));
+        OnPropertyChanged(nameof(CanLoadWorkDate));
         _allItems.Clear();
         Items.Clear();
         SearchText = "";
@@ -308,20 +308,20 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         SelectedCategory = "All";
         // Show all dates by default; preserve an explicit filter only on same-page refresh.
         SelectedDate = previousRoute == Route && ShowDateFilter ? previousDateFilter : null;
-        var visitDate = CanLoadVisitDate ? SelectedDate : null;
+        var workDate = CanLoadWorkDate ? SelectedDate : null;
         (string title, string description, string? path) = Route switch
         {
             "home" => ("Home", "Your employee profile and assigned facility", null),
             "reservations" => ("Reservations", "Customer bookings at your assigned facility", "api/v1/reservations?page=1&pageSize=20"),
-            "task" => ("Task", "All assigned work, including completed work. Use filters to narrow results.", IsManager
+            "task" => ("Task", "Review work items at your facility. Choose a date and select Load date to look up scheduled work.", IsManager
                 ? "api/v1/reservations?page=1&pageSize=20"
-                : StaffWorkItemsPath(1)),
+                : StaffWorkItemsPath(1, workDate)),
             "storage" => IsManager
                 ? ("Storage Unit Control", "Physical storage units at your facility: code, location and operational status", Guid.TryParse(FacilityId, out _) ? $"api/v1/facilities/{FacilityId}/storage-units?page=1&pageSize=20" : null)
                 : ("Customer Contracts", "Customer rental contracts and unit assignments", "api/v1/contracts?page=1&pageSize=20"),
             "access" => IsManager
                 ? ("Visit Oversight", "Facility visits and customer access schedules", "api/v1/visits?page=1&pageSize=20")
-                : ("Customer Check-in / Out", "Visits at your assigned facility. Choose a date and select Load date to look up a specific visit.", StaffWorkItemsPath(1, visitDate)),
+                : ("Customer Check-in / Out", "Visits at your assigned facility. Choose a date and select Load date to look up a specific visit.", StaffWorkItemsPath(1, workDate)),
             "support" => IsManager
                 ? ("Ticket Assignment", "Review and coordinate customer support requests", "api/v1/support-tickets?page=1&pageSize=20")
                 : ("Resolve Tickets", "Follow up on customer tickets assigned to staff", "api/v1/support-tickets?page=1&pageSize=20"),
@@ -371,7 +371,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                     for (int pageNumber = 2; pageNumber <= 10; pageNumber++)
                     {
                         using var more = await _api.GetAsync(
-                            StaffWorkItemsPath(pageNumber, visitDate),
+                            StaffWorkItemsPath(pageNumber, workDate),
                             cts.Token);
                         var moreData = JsonField(more.RootElement, "data");
                         if (moreData.ValueKind == JsonValueKind.Object)
@@ -389,8 +389,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             if (cts.IsCancellationRequested || !ReferenceEquals(_loading, cts)) return;
             UpdateFilters(records);
             Message = records.Count == 0
-                ? (Route == "task" ? "No work items found in the available history." :
-                   Route == "access" ? visitDate is { } selectedVisitDate
+                ? (Route == "task" ? workDate is { } selectedWorkDate
+                       ? $"No scheduled work items found at your facility on {selectedWorkDate:dd MMM yyyy}."
+                       : "No work items found in the available history." :
+                   Route == "access" ? workDate is { } selectedVisitDate
                        ? $"No customer visits found at your facility on {selectedVisitDate:dd MMM yyyy}."
                        : "No customer visits found in the available history."
                    : "No records found.")

@@ -181,7 +181,7 @@ public sealed class MainViewModelTests
                         await LayoutAsync();
                         Assert.Equal(route, vm.EmployeeWorkspace.Route);
                         Assert.Equal(Visibility.Visible, employeeHost.Visibility);
-                        if (route == "access")
+                        if (route is "access" or "task")
                         {
                             var loadDate = Assert.Single(Visuals<Button>(employeeHost),
                                 button => Equals(button.Content, "Load date"));
