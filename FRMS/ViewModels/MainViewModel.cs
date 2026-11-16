@@ -442,7 +442,7 @@ public sealed class MainViewModel : ObservableObject
                 records = await ExpandStorageTypesAsync(records, page, cts.Token);
             if (route == "reservations" || route == "invoices")
                 await EnrichStorageAsync(records, route, cts.Token);
-            if (route == "reservations")
+            if (route is "reservations" or "contracts")
                 await EnrichFacilityNamesAsync(records, cts.Token);
             if (route == "support")
                 await LoadTicketContractsAsync(page, cts.Token);
@@ -559,10 +559,11 @@ public sealed class MainViewModel : ObservableObject
                 Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
                 Subtitle = "Contract: " + ShortId(contractId),
                 Status = status,
-                Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
                 Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
                 Detail3 = "Start: " + DateLabel(Field(element, "startMonth")),
                 Detail4 = "End: " + DateLabel(Field(element, "endMonth")),
+                FacilityId = Field(element, "facilityId"),
+                FacilityName = Field(element, "facilityName"),
                 ContractId = contractId
             },
             "invoices" => new CustomerRecord
