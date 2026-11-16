@@ -122,6 +122,22 @@
                     </StackPanel.Style>
                     <TextBlock Text="Date filter (optional)" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
                     <DatePicker Height="36" SelectedDate="{Binding EmployeeWorkspace.SelectedDate, Mode=TwoWay}"/>
+                    <Button Content="Load date" Padding="8,4" Margin="0,5,0,0"
+                            Command="{Binding EmployeeWorkspace.RefreshCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EmployeeWorkspace.CanLoadVisitDate}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding EmployeeWorkspace.SelectedDate}" Value="{x:Null}">
+                                        <Setter Property="IsEnabled" Value="False"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button Content="Clear date / All dates" Padding="8,4" Margin="0,5,0,0"
                             Command="{Binding EmployeeWorkspace.ClearWorkDateFilterCommand}"/>
                 </StackPanel>

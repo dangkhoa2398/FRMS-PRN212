@@ -183,6 +183,11 @@ public sealed class MainViewModelTests
                         Assert.Equal(Visibility.Visible, employeeHost.Visibility);
                         if (route == "access")
                         {
+                            var loadDate = Assert.Single(Visuals<Button>(employeeHost),
+                                button => Equals(button.Content, "Load date"));
+                            Assert.Equal(role == "FACILITY_STAFF" ? Visibility.Visible : Visibility.Collapsed,
+                                loadDate.Visibility);
+                            Assert.Same(vm.EmployeeWorkspace.RefreshCommand, loadDate.Command);
                             var picker = Assert.Single(Visuals<DatePicker>(employeeHost));
                             var dateField = Assert.IsType<System.Windows.Controls.Primitives.DatePickerTextBox>(
                                 picker.Template.FindName("PART_TextBox", picker));

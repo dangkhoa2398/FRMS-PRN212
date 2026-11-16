@@ -117,6 +117,44 @@ public sealed class EmployeeWorkspaceTests
     });
 
     [Fact]
+    public Task Staff_AccessCanLoadVisitMissingFromAllDatesAndClearLookup() => StaTest.RunAsync(async () =>
+    {
+        const string path = "/api/v1/staff/work-items";
+        var server = new FakeBackend { Reply = request =>
+        {
+            if (request.Path != path) return FakeProfile(request);
+            if (request.Query.Contains("date=2026-11-18", StringComparison.Ordinal))
+                return FakeBackend.Json("""
+                    {"data":[{"workType":"ACCESS_VISIT","status":"SCHEDULED",
+                      "referenceId":"44444444-4444-4444-4444-444444444444","scheduledDate":"2026-11-18"}],
+                     "pagination":{"page":1,"pageSize":100,"totalItems":1,"totalPages":1}}
+                    """);
+
+            return FakeBackend.Json("""
+                {"data":[{"workType":"RETURN_VISIT","status":"SCHEDULED","scheduledDate":"2026-11-19"}]}
+                """);
+        }};
+        var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
+        await vm.NavigateCommand.ExecuteAsync("access");
+        Assert.Equal("RETURN_VISIT", Assert.Single(vm.Items).WorkType);
+
+        vm.SelectedDate = new DateTime(2026, 11, 18);
+        Assert.Empty(vm.Items);
+        await vm.RefreshCommand.ExecuteAsync(null);
+
+        var visit = Assert.Single(vm.Items);
+        Assert.Equal(FakeBackend.VisitId, visit.ReferenceId);
+        Assert.True(visit.CanCheckIn);
+        Assert.Contains(server.Requests, request => request.Path == path &&
+            request.Query.Contains("date=2026-11-18", StringComparison.Ordinal));
+
+        await vm.ClearWorkDateFilterCommand.ExecuteAsync(null);
+        Assert.Null(vm.SelectedDate);
+        Assert.Equal("RETURN_VISIT", Assert.Single(vm.Items).WorkType);
+        Assert.DoesNotContain("&date=", server.Requests.Last(request => request.Path == path).Query);
+    });
+
+    [Fact]
     public Task Staff_TaskShowsHistoryAndFiltersStatusAndSearch() => StaTest.RunAsync(async () =>
     {
         var server = new FakeBackend { Reply = r => r.Path == "/api/v1/staff/work-items"

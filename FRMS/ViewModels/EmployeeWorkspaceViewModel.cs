@@ -54,7 +54,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         TaskDateChangedCommand = new AsyncRelayCommand(TaskDateChangedAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
-        ClearWorkDateFilterCommand = new RelayCommand(() => SelectedDate = null);
+        ClearWorkDateFilterCommand = new AsyncRelayCommand(ClearWorkDateFilterAsync);
         CheckInCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckInAsync);
         CheckOutCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckOutAsync);
         CompleteTicketCommand = new AsyncRelayCommand<EmployeeWorkItem>(CompleteTicketAsync);
@@ -101,6 +101,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public bool ShowFilters => Route != "home";
     public bool ShowCategoryFilter => Route != "reservations" && Route != "home";
     public bool ShowDateFilter => Route is "access" or "task";
+    public bool CanLoadVisitDate => IsStaff && Route == "access";
     private DateTime _taskDate = DateTime.Today;
     public DateTime TaskDate { get => _taskDate; set => SetProperty(ref _taskDate, value); }
     private string _searchText = "";
@@ -150,7 +151,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand<string> NavigateCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
     public IAsyncRelayCommand TaskDateChangedCommand { get; }
-    public IRelayCommand ClearWorkDateFilterCommand { get; }
+    public IAsyncRelayCommand ClearWorkDateFilterCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CheckInCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CheckOutCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CompleteTicketCommand { get; }
@@ -270,6 +271,22 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         await NavigateAsync(Route);
     }
 
+    private async Task ClearWorkDateFilterAsync()
+    {
+        var hadDate = SelectedDate.HasValue;
+        SelectedDate = null;
+        if (hadDate && CanLoadVisitDate)
+            await NavigateAsync("access");
+    }
+
+    private static string StaffWorkItemsPath(int page, DateTime? visitDate = null)
+    {
+        var path = $"api/v1/staff/work-items?allDates=true&includeHistory=true&page={page}&pageSize=100";
+        return visitDate is { } date
+            ? path + "&date=" + date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+            : path;
+    }
+
     private async Task NavigateAsync(string? route)
     {
         _loading?.Cancel();
@@ -283,6 +300,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowFilters));
         OnPropertyChanged(nameof(ShowCategoryFilter));
         OnPropertyChanged(nameof(ShowDateFilter));
+        OnPropertyChanged(nameof(CanLoadVisitDate));
         _allItems.Clear();
         Items.Clear();
         SearchText = "";
@@ -290,23 +308,24 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         SelectedCategory = "All";
         // Show all dates by default; preserve an explicit filter only on same-page refresh.
         SelectedDate = previousRoute == Route && ShowDateFilter ? previousDateFilter : null;
+        var visitDate = CanLoadVisitDate ? SelectedDate : null;
         (string title, string description, string? path) = Route switch
         {
             "home" => ("Home", "Your employee profile and assigned facility", null),
             "reservations" => ("Reservations", "Customer bookings at your assigned facility", "api/v1/reservations?page=1&pageSize=20"),
             "task" => ("Task", "All assigned work, including completed work. Use filters to narrow results.", IsManager
                 ? "api/v1/reservations?page=1&pageSize=20"
-                : "api/v1/staff/work-items?allDates=true&includeHistory=true&page=1&pageSize=100"),
+                : StaffWorkItemsPath(1)),
             "storage" => IsManager
                 ? ("Storage Unit Control", "Physical storage units at your facility: code, location and operational status", Guid.TryParse(FacilityId, out _) ? $"api/v1/facilities/{FacilityId}/storage-units?page=1&pageSize=20" : null)
                 : ("Customer Contracts", "Customer rental contracts and unit assignments", "api/v1/contracts?page=1&pageSize=20"),
             "access" => IsManager
                 ? ("Visit Oversight", "Facility visits and customer access schedules", "api/v1/visits?page=1&pageSize=20")
-                : ("Customer Check-in / Out", "All customer visits including completed check-ins and check-outs. Filter by date if needed.", "api/v1/staff/work-items?allDates=true&includeHistory=true&page=1&pageSize=100"),
+                : ("Customer Check-in / Out", "Visits at your assigned facility. Choose a date and select Load date to look up a specific visit.", StaffWorkItemsPath(1, visitDate)),
             "support" => IsManager
                 ? ("Ticket Assignment", "Review and coordinate customer support requests", "api/v1/support-tickets?page=1&pageSize=20")
                 : ("Resolve Tickets", "Follow up on customer tickets assigned to staff", "api/v1/support-tickets?page=1&pageSize=20"),
-            _ => ("Task", "All assigned work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : "api/v1/staff/work-items?allDates=true&includeHistory=true&page=1&pageSize=100")
+            _ => ("Task", "All assigned work", IsManager ? "api/v1/reservations?page=1&pageSize=20" : StaffWorkItemsPath(1))
         };
         Title = title;
         Description = description;
@@ -352,7 +371,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
                     for (int pageNumber = 2; pageNumber <= 10; pageNumber++)
                     {
                         using var more = await _api.GetAsync(
-                            $"api/v1/staff/work-items?allDates=true&includeHistory=true&page={pageNumber}&pageSize=100",
+                            StaffWorkItemsPath(pageNumber, visitDate),
                             cts.Token);
                         var moreData = JsonField(more.RootElement, "data");
                         if (moreData.ValueKind == JsonValueKind.Object)
@@ -371,7 +390,10 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             UpdateFilters(records);
             Message = records.Count == 0
                 ? (Route == "task" ? "No work items found in the available history." :
-                   Route == "access" ? "No customer visits found in the available history." : "No records found.")
+                   Route == "access" ? visitDate is { } selectedVisitDate
+                       ? $"No customer visits found at your facility on {selectedVisitDate:dd MMM yyyy}."
+                       : "No customer visits found in the available history."
+                   : "No records found.")
                 : $"{Items.Count} of {records.Count} record(s) shown." +
                   (historyTruncated ? " Only the first 1,000 records are loaded. Older records require server-side pagination." : "");
         }
