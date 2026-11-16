@@ -37,6 +37,7 @@ public sealed class MainViewModel : ObservableObject
         OpenContractCommand = new AsyncRelayCommand<CustomerRecord>(OpenContractAsync);
         CreateVisitCommand = new AsyncRelayCommand<CustomerRecord>(CreateVisitAsync);
         CreateReservationCommand = new AsyncRelayCommand(CreateReservationAsync);
+        ScheduleHandoverCommand = new AsyncRelayCommand<CustomerRecord>(ScheduleHandoverAsync);
         SelectFacilityCommand = new AsyncRelayCommand<CustomerRecord>(SelectFacilityAsync);
         CreateSupportTicketCommand = new AsyncRelayCommand(CreateSupportTicketAsync);
         PayInvoiceCommand = new AsyncRelayCommand<CustomerRecord>(PayInvoiceAsync);
@@ -91,6 +92,7 @@ public sealed class MainViewModel : ObservableObject
     public IAsyncRelayCommand<CustomerRecord> OpenContractCommand { get; }
     public IAsyncRelayCommand<CustomerRecord> CreateVisitCommand { get; }
     public IAsyncRelayCommand CreateReservationCommand { get; }
+    public IAsyncRelayCommand<CustomerRecord> ScheduleHandoverCommand { get; }
     public IAsyncRelayCommand<CustomerRecord> SelectFacilityCommand { get; }
     public IAsyncRelayCommand CreateSupportTicketCommand { get; }
     public IAsyncRelayCommand CheckConnectionCommand { get; }
@@ -309,6 +311,52 @@ public sealed class MainViewModel : ObservableObject
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             page.Message = "Reservation was not created: " + ex.Message;
+            page.IsLoading = false;
+        }
+    }
+
+    private async Task ScheduleHandoverAsync(CustomerRecord? record)
+    {
+        var page = CurrentPage;
+        if (!IsAuthenticated || IsEmployee || !page.IsReservations || page.IsLoading ||
+            record?.CanScheduleHandover != true || !page.Records.Contains(record))
+            return;
+
+        if (record.HandoverDate is not DateTime chosenDate)
+        {
+            record.HandoverError = "Choose a handover date.";
+            return;
+        }
+
+        record.HandoverError = "";
+        page.IsLoading = true;
+        try
+        {
+            using var result = await _api.SendJsonAsync(HttpMethod.Post,
+                $"api/v1/reservations/{record.ReservationId:D}/confirm",
+                new { reservationVisitDate = DateOnly.FromDateTime(chosenDate) });
+            var visit = Property(Property(result.RootElement, "data"), "reservationVisit");
+            if (ParseApiDate(Field(visit, "visitDate"), "yyyy-MM-dd") is not DateOnly scheduledDate)
+                throw new JsonException("Missing handover date in confirmation.");
+
+            record.ConfirmHandover(scheduledDate, Field(visit, "status"));
+            page.ApplyFilter();
+            page.Message = $"Handover visit scheduled for {scheduledDate:dd MMM yyyy}.";
+        }
+        catch (HttpRequestException ex) when (ex.Message.Contains("VISIT_DATE_OUT_OF_POLICY", StringComparison.Ordinal))
+        {
+            record.HandoverError = "That date is outside the facility's handover window. Choose another day in your rental start month.";
+        }
+        catch (HttpRequestException ex) when (ex.Message.Contains("DEPOSIT_NOT_PAID", StringComparison.Ordinal))
+        {
+            record.HandoverError = "The deposit has not been marked paid. Check Invoices and refresh My Reservations.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            record.HandoverError = "Could not confirm the handover date. Refresh My Reservations to check whether a visit was scheduled before retrying.";
+        }
+        finally
+        {
             page.IsLoading = false;
         }
     }
@@ -614,22 +662,38 @@ public sealed class MainViewModel : ObservableObject
                 Content = Field(element, "content", "description", "message", "details"),
                 ContractId = contractId
             },
-            "reservations" => new CustomerRecord
-            {
-                Title = Field(element, "unitTypeName", "unitTypeMode") is var type && !string.IsNullOrWhiteSpace(type) ? type : "Booked storage type",
-                Subtitle = "Reservation: " + ShortId(Field(element, "reservationId")),
-                Status = status,
-                Detail1 = "Unit Type ID: " + ShortId(Field(element, "unitTypeId")),
-                Detail2 = "Period: " + DateLabel(Field(element, "startMonth")) + " – " + DateLabel(Field(element, "endMonth")),
-                Detail3 = "Deposit: " + Money(Field(element, "depositAmount", "lockedDepositAmount")),
-                UnitType = Field(element, "unitTypeName", "unitTypeMode") is var typeName && !string.IsNullOrWhiteSpace(typeName) ? typeName : "Type " + ShortId(Field(element, "unitTypeId")),
-                UnitTypeId = Field(element, "unitTypeId"),
-                FacilityId = Field(element, "facilityId"),
-                FacilityName = Field(element, "facilityName")
-            },
+            "reservations" => MapReservation(element, status),
             _ => new CustomerRecord { Title = "Record", Status = status }
         };
     }
+
+    private static CustomerRecord MapReservation(JsonElement element, string status)
+    {
+        var record = new CustomerRecord
+        {
+            Title = Field(element, "unitTypeName", "unitTypeMode") is var type && !string.IsNullOrWhiteSpace(type) ? type : "Booked storage type",
+            Subtitle = "Reservation: " + ShortId(Field(element, "reservationId")),
+            Status = status,
+            ReservationId = Guid.TryParse(Field(element, "reservationId"), out var id) ? id : Guid.Empty,
+            DepositStatus = Field(Property(element, "depositInvoice"), "status"),
+            RentalStartMonth = ParseApiDate(Field(element, "startMonth"), "yyyy-MM"),
+            Detail1 = "Unit Type ID: " + ShortId(Field(element, "unitTypeId")),
+            Detail2 = "Period: " + DateLabel(Field(element, "startMonth")) + " – " + DateLabel(Field(element, "endMonth")),
+            Detail3 = "Deposit: " + Money(Field(element, "depositAmount", "lockedDepositAmount")),
+            UnitType = Field(element, "unitTypeName", "unitTypeMode") is var typeName && !string.IsNullOrWhiteSpace(typeName) ? typeName : "Type " + ShortId(Field(element, "unitTypeId")),
+            UnitTypeId = Field(element, "unitTypeId"),
+            FacilityId = Field(element, "facilityId"),
+            FacilityName = Field(element, "facilityName")
+        };
+        var visit = Property(element, "reservationVisit");
+        if (ParseApiDate(Field(visit, "visitDate"), "yyyy-MM-dd") is DateOnly date)
+            record.SetHandoverVisit(date, Field(visit, "status"));
+        return record;
+    }
+
+    private static DateOnly? ParseApiDate(string value, string format) =>
+        DateOnly.TryParseExact(value, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date : null;
 
     private async Task EnrichStorageAsync(List<CustomerRecord> records, string route, CancellationToken token)
     {

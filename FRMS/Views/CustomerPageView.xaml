@@ -112,6 +112,21 @@
                                 </Style>
                             </Button.Style>
                         </Button>
+                        <Button Content="Go to My Reservations" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                ToolTip="Open My Reservations to schedule or view your handover visit."
+                                Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="reservations">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPaidDeposit}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                     <Border Grid.Column="1" Style="{StaticResource StatusTag}">
                         <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StatusForegroundBrush}" FontWeight="SemiBold"/>
@@ -137,6 +152,30 @@
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,7,0,0"/>
                     <TextBlock Text="{Binding Detail3}" Foreground="{DynamicResource AccentTextBrush}" FontWeight="SemiBold" Margin="0,11,0,0"/>
                     <TextBlock Text="{Binding FacilityName}" Style="{StaticResource Subtle}" Margin="0,5,0,0"/>
+                    <TextBlock Text="{Binding HandoverSummary}" Style="{StaticResource Subtle}" Margin="0,10,0,0"/>
+                    <StackPanel Margin="0,10,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CanScheduleHandover}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <WrapPanel>
+                            <DatePicker Width="165" Margin="0,0,10,0" AutomationProperties.Name="Handover date"
+                                        DisplayDateStart="{Binding HandoverMonthStart, Mode=OneWay}"
+                                        DisplayDateEnd="{Binding HandoverMonthEnd, Mode=OneWay}"
+                                        SelectedDate="{Binding HandoverDate, Mode=TwoWay}"/>
+                            <Button Content="Schedule handover"
+                                    Command="{Binding DataContext.ScheduleHandoverCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}"/>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding HandoverError}" Foreground="{DynamicResource DangerBrush}"
+                                   TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </DataTemplate>
