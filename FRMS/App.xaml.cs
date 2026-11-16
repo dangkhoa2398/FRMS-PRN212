@@ -16,14 +16,15 @@ public partial class App : Application
         base.OnStartup(e);
         ThemeManager.Initialize();
         var services = new ServiceCollection();
+        var backendAddress = new Uri("https://swp391-self-storage-facility-rental-and.onrender.com/");
         services.AddHttpClient<IFrmsHealthService, FrmsHealthService>(client =>
         {
-            client.BaseAddress = new Uri("http://localhost:5164/");
+            client.BaseAddress = backendAddress;
             client.Timeout = TimeSpan.FromSeconds(10);
         });
         services.AddHttpClient<CustomerApiService>(client =>
         {
-            client.BaseAddress = new Uri("http://localhost:5164/");
+            client.BaseAddress = backendAddress;
             client.Timeout = TimeSpan.FromSeconds(20);
         });
         services.AddSingleton<MainViewModel>();
