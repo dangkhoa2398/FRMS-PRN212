@@ -71,7 +71,10 @@
                     </Grid>
                     <Separator Margin="0,15"/>
                     <UniformGrid Columns="2">
-                        <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5,12,5">
+                            <TextBlock Text="Facility: " Style="{StaticResource Subtle}"/>
+                            <TextBlock Text="{Binding FacilityName}" Style="{StaticResource Subtle}"/>
+                        </StackPanel>
                         <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
                         <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
                         <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
