@@ -119,13 +119,14 @@ public sealed class MainViewModelTests
                 AssertInputLayout(password);
                 var accountType = Assert.Single(Visuals<ComboBox>(loginHost));
                 var selection = Assert.Single(Visuals<TextBlock>(accountType), x => x.Text == "Customer");
-                Assert.Equal(SystemColors.WindowTextColor, Assert.IsType<SolidColorBrush>(selection.Foreground).Color);
+                Assert.Equal(Assert.IsType<SolidColorBrush>(app.FindResource("TextPrimaryBrush")).Color,
+                    Assert.IsType<SolidColorBrush>(selection.Foreground).Color);
 
                 var submit = Assert.Single(Visuals<Button>(loginHost), x => Equals(x.Content, "Sign in"));
                 Assert.Same(password, submit.CommandParameter);
                 await vm.LoginCommand.ExecuteAsync(submit.CommandParameter as PasswordBox);
                 Assert.Empty(password.Password);
-                foreach (var route in new[] { "home", "storage", "reservations", "contracts", "invoices", "support" })
+                foreach (var route in new[] { "home", "storage", "reservations", "contracts", "invoices", "access", "support" })
                 {
                     await vm.NavigateCommand.ExecuteAsync(route);
                     await LayoutAsync();
@@ -162,6 +163,17 @@ public sealed class MainViewModelTests
                         await LayoutAsync();
                         Assert.Equal(route, vm.EmployeeWorkspace.Route);
                         Assert.Equal(Visibility.Visible, employeeHost.Visibility);
+                        if (route == "reservations" && role == "FACILITY_MANAGER")
+                        {
+                            var table = Assert.Single(Visuals<DataGrid>(employeeHost), grid => grid.IsVisible || grid.Visibility == Visibility.Visible);
+                            table.SelectedIndex = 0;
+                            await LayoutAsync();
+                            Assert.Same(vm.EmployeeWorkspace.Items[0], vm.EmployeeWorkspace.SelectedItem);
+                            var assign = Assert.Single(Visuals<Button>(employeeHost),
+                                button => Equals(button.Content, "Assign available unit"));
+                            Assert.Same(vm.EmployeeWorkspace.AssignHandoverUnitCommand, assign.Command);
+                            Assert.Same(vm.EmployeeWorkspace.SelectedItem, assign.CommandParameter);
+                        }
                         if (route == "access")
                         {
                             var picker = Assert.Single(Visuals<DatePicker>(employeeHost));
@@ -318,6 +330,24 @@ public sealed class MainViewModelTests
         Assert.Equal("Small Locker", page.Records[0].Title);
         Assert.Contains(server.Requests, r => r.Path.EndsWith("/unit-types") &&
             r.Query.Contains("mode=PRIVATE") && r.Query.Contains("availableOnly=true"));
+    });
+
+    [Fact]
+    public Task Contracts_ResolveFacilityNameAndKeepUnitCode() => StaTest.RunAsync(async () =>
+    {
+        var vm = NewMain(NewBackend(request => request.Path == "/api/v1/contracts"
+            ? FakeBackend.Json(JsonSerializer.Serialize(new
+            {
+                data = new[] { new { contractId = FakeBackend.ContractId, facilityId = FakeBackend.FacilityId, unitCode = "A-101" } }
+            }))
+            : null));
+        await SignInCustomerAsync(vm);
+
+        await vm.NavigateCommand.ExecuteAsync("contracts");
+
+        var contract = Assert.Single(vm.CurrentPage.VisibleRecords);
+        Assert.Equal("Unit A-101", contract.Title);
+        Assert.Equal("Demo Facility", contract.FacilityName);
     });
 
     [Fact]

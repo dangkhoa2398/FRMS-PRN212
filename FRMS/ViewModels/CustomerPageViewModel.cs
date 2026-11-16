@@ -74,7 +74,16 @@ public sealed class CustomerPageViewModel : ObservableObject
     private string _reservationFacilityId = "";
     private string _reservationFacilityName = "";
     public string ReservationFacilityName { get => _reservationFacilityName; set => SetProperty(ref _reservationFacilityName, value); }
-    public string ReservationFacilityId { get => _reservationFacilityId; set => SetProperty(ref _reservationFacilityId, value); }
+    public string ReservationFacilityId
+    {
+        get => _reservationFacilityId;
+        set
+        {
+            if (SetProperty(ref _reservationFacilityId, value))
+                OnPropertyChanged(nameof(HasReservationSelection));
+        }
+    }
+    public bool HasReservationSelection => !string.IsNullOrWhiteSpace(ReservationFacilityId);
     public ObservableCollection<CustomerUnitTypeOption> UnitTypes { get; } = new();
     private string _selectedUnitTypeId = "";
     public string SelectedUnitTypeId { get => _selectedUnitTypeId; set { if (SetProperty(ref _selectedUnitTypeId, value)) ReservationUnitTypeId = value; } }

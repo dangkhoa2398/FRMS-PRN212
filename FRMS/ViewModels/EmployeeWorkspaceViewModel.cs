@@ -53,7 +53,6 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _api = api;
         NavigateCommand = new AsyncRelayCommand<string>(NavigateAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
-        TaskDateChangedCommand = new AsyncRelayCommand(TaskDateChangedAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         ClearWorkDateFilterCommand = new RelayCommand(() => SelectedDate = null);
         CheckInCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckInAsync);
         CheckOutCommand = new AsyncRelayCommand<EmployeeWorkItem>(CheckOutAsync);
@@ -96,13 +95,53 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public bool IsLoading { get => _isLoading; private set => SetProperty(ref _isLoading, value); }
     private readonly List<EmployeeWorkItem> _allItems = new();
     public ObservableCollection<EmployeeWorkItem> Items { get; } = new();
+    public string[] TaskPeriods { get; } = ["All", "Active", "Upcoming", "Completed"];
+    public bool ShowTaskPeriods => IsStaff && Route == "task";
+    private string _taskPeriod = "All";
+    public string TaskPeriod
+    {
+        get => _taskPeriod;
+        set { if (SetProperty(ref _taskPeriod, value)) ApplyFilters(); }
+    }
+
+    private EmployeeWorkItem? _selectedItem;
+    public EmployeeWorkItem? SelectedItem
+    {
+        get => _selectedItem;
+        set
+        {
+            if (!SetProperty(ref _selectedItem, value)) return;
+            ActionNote = "";
+            SelectedStaffId = "";
+            ActualReturnDate = null;
+        }
+    }
+
+    private DateTime? _actualReturnDate;
+    public DateTime? ActualReturnDate
+    {
+        get => _actualReturnDate;
+        set => SetProperty(ref _actualReturnDate, value);
+    }
+
+    private bool MatchesTaskPeriod(EmployeeWorkItem item)
+    {
+        var completed = item.Status is "COMPLETED" or "CHECKED_OUT" or "CANCELLED" or "NO_SHOW" or "RETURNED";
+        var upcoming = DateTime.TryParse(item.DateValue, out var date) && date.Date > DateTime.Today &&
+            item.Status is not ("CHECKED_IN" or "IN_PROGRESS");
+        return TaskPeriod switch
+        {
+            "Active" => !completed && !upcoming,
+            "Upcoming" => !completed && upcoming,
+            "Completed" => completed,
+            _ => true
+        };
+    }
     public ObservableCollection<string> StatusOptions { get; } = new() { "All" };
     public ObservableCollection<string> CategoryOptions { get; } = new() { "All" };
     public bool ShowFilters => Route != "home";
     public bool ShowCategoryFilter => Route != "reservations" && Route != "home";
     public bool ShowDateFilter => Route is "access" or "task";
-    private DateTime _taskDate = DateTime.Today;
-    public DateTime TaskDate { get => _taskDate; set => SetProperty(ref _taskDate, value); }
     private string _searchText = "";
     public string SearchText { get => _searchText; set { if (SetProperty(ref _searchText, value)) ApplyFilters(); } }
     private string _selectedStatus = "All";
@@ -134,6 +173,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     private void ApplyFilters()
     {
         var result = _allItems.Where(x =>
+            (!ShowTaskPeriods || MatchesTaskPeriod(x)) &&
             (string.IsNullOrWhiteSpace(SelectedStatus) || SelectedStatus == "All" || x.Status.Equals(SelectedStatus, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(SelectedCategory) || SelectedCategory == "All" || x.Category.Equals(SelectedCategory, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrWhiteSpace(SearchText) || x.SearchText.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)) &&
@@ -149,7 +189,6 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
 
     public IAsyncRelayCommand<string> NavigateCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
-    public IAsyncRelayCommand TaskDateChangedCommand { get; }
     public IRelayCommand ClearWorkDateFilterCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CheckInCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CheckOutCommand { get; }
@@ -162,8 +201,6 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     public IAsyncRelayCommand<EmployeeWorkItem> ConfirmReturnCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> ClaimInspectionCommand { get; }
     public IAsyncRelayCommand<EmployeeWorkItem> CompleteInspectionCommand { get; }
-    private string _actionInput = "";
-    public string ActionInput { get => _actionInput; set => SetProperty(ref _actionInput, value); }
     private string _actionNote = "";
     public string ActionNote { get => _actionNote; set => SetProperty(ref _actionNote, value); }
     public ObservableCollection<EmployeeLookupOption> AvailableUnitTypes { get; } = new();
@@ -195,9 +232,6 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             // Employee profile remains available if public facility information cannot be read.
         }
     }
-
-    // The date is now a client-side filter; it does not change which days the API returns.
-    private Task TaskDateChangedAsync() { ApplyFilters(); return Task.CompletedTask; }
 
     public async Task InitializeAsync(string role)
     {
@@ -232,6 +266,7 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         _loading = null;
         loading?.Cancel();
         IsLoading = false;
+        SelectedItem = null;
         Items.Clear();
         _allItems.Clear();
         DisplayName = "Employee";
@@ -283,6 +318,9 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowFilters));
         OnPropertyChanged(nameof(ShowCategoryFilter));
         OnPropertyChanged(nameof(ShowDateFilter));
+        OnPropertyChanged(nameof(ShowTaskPeriods));
+        if (previousRoute != Route) TaskPeriod = "All";
+        SelectedItem = null;
         _allItems.Clear();
         Items.Clear();
         SearchText = "";
@@ -522,6 +560,13 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
             {
                 Message = "Reservation does not belong to your assigned facility."; return;
             }
+            var visit = JsonField(reservation, "reservationVisit");
+            if (visit.ValueKind == JsonValueKind.Null ||
+                (visit.ValueKind == JsonValueKind.Object && Field(visit, "status") != "CHECKED_IN"))
+            {
+                Message = "The customer must check in for the reservation visit before a unit can be assigned.";
+                return;
+            }
             // Only same-type AVAILABLE units are considered. The database procedure
             // remains authoritative for reservation/visit eligibility and assignment conflicts.
             using var unitsDoc = await _api.GetAsync(
@@ -566,14 +611,44 @@ public sealed class EmployeeWorkspaceViewModel : ObservableObject
     }
     private async Task CompleteHandoverAsync(EmployeeWorkItem? item)
     {
-        if (item is null || !Guid.TryParse(item.EntityId, out var reservationId) || !Guid.TryParse(item.ReferenceId, out var visitId) || !Guid.TryParse(ActionInput.Trim(), out var storageUnitId)) { Message = "This reservation visit needs its linked Reservation ID and a valid Storage Unit ID."; return; }
-        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/reservations/" + reservationId.ToString("D") + "/complete-handover", new { visitId, storageUnitId, discountId = (Guid?)null }); ActionInput = ""; Message = "Handover completed and contract created."; await NavigateAsync("task"); }
+        if (item is null || !Guid.TryParse(item.EntityId, out var reservationId) ||
+            !Guid.TryParse(item.ReferenceId, out var visitId))
+        {
+            Message = "This visit has no linked reservation.";
+            return;
+        }
+
+        try
+        {
+            using var assignment = await _api.GetAsync($"api/v1/reservations/{reservationId:D}/handover-unit-assignment");
+            if (!Guid.TryParse(Field(JsonField(assignment.RootElement, "data"), "storageUnitId"), out var storageUnitId))
+            {
+                Message = "Ask the facility manager to assign a storage unit before completing handover.";
+                return;
+            }
+
+            using var response = await _api.SendJsonAsync(HttpMethod.Post,
+                $"api/v1/reservations/{reservationId:D}/complete-handover", new { visitId, storageUnitId, discountId = (Guid?)null });
+            await NavigateAsync("task");
+            Message = "Handover completed and contract created.";
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Handover could not be completed: " + ex.Message; }
     }
     private async Task ConfirmReturnAsync(EmployeeWorkItem? item)
     {
-        if (item is null || !Guid.TryParse(item.ReferenceId, out var visitId) || !DateOnly.TryParseExact(ActionInput.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var actualReturnDate)) { Message = "Enter actual return date as yyyy-MM-dd."; return; }
-        try { using var response = await _api.SendJsonAsync(HttpMethod.Post, "api/v1/visits/" + visitId.ToString("D") + "/confirm-return", new { actualReturnDate = actualReturnDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }); ActionInput = ""; Message = "Actual return recorded; inspection has been created."; await NavigateAsync("task"); }
+        if (item is null || !Guid.TryParse(item.ReferenceId, out var visitId) ||
+            ActualReturnDate is not DateTime actualReturnDate)
+        {
+            Message = "Choose the actual return date.";
+            return;
+        }
+        try
+        {
+            using var response = await _api.SendJsonAsync(HttpMethod.Post, $"api/v1/visits/{visitId:D}/confirm-return",
+                new { actualReturnDate = actualReturnDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) });
+            await NavigateAsync("task");
+            Message = "Actual return recorded; inspection has been created.";
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { Message = "Return confirmation failed: " + ex.Message; }
     }
     private static JsonElement JsonField(JsonElement obj, string name) =>

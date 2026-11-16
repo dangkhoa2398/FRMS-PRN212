@@ -132,6 +132,10 @@ public sealed class EmployeeWorkspaceTests
         await vm.NavigateCommand.ExecuteAsync("task");
         Assert.Equal(3, vm.Items.Count);
         Assert.Contains("COMPLETED", vm.StatusOptions);
+        vm.TaskPeriod = "Completed";
+        Assert.Equal(2, vm.Items.Count);
+        Assert.All(vm.Items, item => Assert.Equal("COMPLETED", item.Status));
+        vm.TaskPeriod = "All";
         vm.SelectedStatus = "COMPLETED";
         Assert.Equal(2, vm.Items.Count);
         vm.SearchText = "INSPECTION";
@@ -267,12 +271,21 @@ public sealed class EmployeeWorkspaceTests
     [Fact]
     public Task Staff_CompleteHandoverUsesReservationVisitAndUnit() => StaTest.RunAsync(async () =>
     {
-        var server = new FakeBackend();
+        var hasAssignment = false;
+        var server = new FakeBackend { Reply = request =>
+        {
+            if (request.Path.EndsWith("/handover-unit-assignment"))
+                return FakeBackend.Json(hasAssignment
+                    ? "{\"data\":{\"storageUnitId\":\"" + FakeBackend.StorageUnitId + "\"}}"
+                    : "{\"data\":null}");
+            return FakeProfile(request);
+        }};
         var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
         var item = new EmployeeWorkItem { EntityId = FakeBackend.ContractId, ReferenceId = FakeBackend.VisitId };
         await vm.CompleteHandoverCommand.ExecuteAsync(item);
-        Assert.Contains("Storage Unit ID", vm.Message);
-        vm.ActionInput = FakeBackend.StorageUnitId;
+        Assert.Contains("facility manager", vm.Message);
+        Assert.DoesNotContain(server.Requests, r => r.Path.EndsWith("/complete-handover"));
+        hasAssignment = true;
         await vm.CompleteHandoverCommand.ExecuteAsync(item);
         var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/complete-handover"));
         using var json = JsonDocument.Parse(req.Body!);
@@ -286,10 +299,9 @@ public sealed class EmployeeWorkspaceTests
         var server = new FakeBackend();
         var vm = await NewEmployeeAsync(server, "FACILITY_STAFF");
         var item = new EmployeeWorkItem { ReferenceId = FakeBackend.VisitId };
-        vm.ActionInput = "15/11/2026";
         await vm.ConfirmReturnCommand.ExecuteAsync(item);
-        Assert.Contains("yyyy-MM-dd", vm.Message);
-        vm.ActionInput = "2026-11-15";
+        Assert.Contains("Choose the actual return date", vm.Message);
+        vm.ActualReturnDate = new DateTime(2026, 11, 15);
         await vm.ConfirmReturnCommand.ExecuteAsync(item);
         var req = Assert.Single(server.Requests, r => r.Path.EndsWith("/confirm-return"));
         using var json = JsonDocument.Parse(req.Body!);
@@ -314,6 +326,35 @@ public sealed class EmployeeWorkspaceTests
         Assert.Equal(HttpMethod.Put, req.Method);
         using var json = JsonDocument.Parse(req.Body!);
         Assert.Equal(FakeBackend.StorageUnitId, json.RootElement.GetProperty("storageUnitId").GetString());
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Manager_AssignmentStopsBeforeUnitLookupWhenIneligible(bool wrongFacility) => StaTest.RunAsync(async () =>
+    {
+        var server = new FakeBackend { Reply = request =>
+        {
+            if (request.Path != "/api/v1/reservations/" + FakeBackend.ContractId)
+                return FakeProfile(request);
+
+            return FakeBackend.Json(JsonSerializer.Serialize(new
+            {
+                data = new
+                {
+                    facilityId = wrongFacility ? Guid.NewGuid().ToString() : FakeBackend.FacilityId,
+                    unitTypeId = FakeBackend.UnitTypeId,
+                    reservationVisit = new { status = "SCHEDULED" }
+                }
+            }));
+        }};
+        var vm = await NewEmployeeAsync(server, "FACILITY_MANAGER");
+
+        await vm.AssignHandoverUnitCommand.ExecuteAsync(new EmployeeWorkItem { ReferenceId = FakeBackend.ContractId });
+
+        Assert.Contains(wrongFacility ? "assigned facility" : "must check in", vm.Message);
+        Assert.DoesNotContain(server.Requests, request => request.Path.EndsWith("/storage-units") ||
+            request.Path.EndsWith("/handover-unit-assignment"));
     });
 
     [Fact]

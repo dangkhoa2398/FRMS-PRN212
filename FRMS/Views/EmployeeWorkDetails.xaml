@@ -1,0 +1,228 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DataTemplate x:Key="EmployeeWorkDetails">
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="9,17">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource TextMutedBrush}" Margin="0,7,0,0"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Style="{StaticResource StatusBadgeStyle}">
+                        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StatusForegroundBrush}"/>
+                    </Border>
+                </Grid>
+                <TextBlock Text="{Binding Detail1}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,0"/>
+                <TextBlock Text="{Binding Detail2}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
+                <StackPanel Margin="0,12,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="task"/>
+                                        <Condition Binding="{Binding IsInspection}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Inspection – check the unit condition. Claim it before completing if it is not yet assigned." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,7"/>
+                    <TextBlock Text="Condition note (required to complete)" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding InspectionNote, UpdateSourceTrigger=PropertyChanged}" Height="56" AcceptsReturn="True" TextWrapping="Wrap" Padding="7" VerticalScrollBarVisibility="Auto"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Claim inspection" Padding="12,7" Margin="0,0,8,0"
+                                Command="{Binding DataContext.EmployeeWorkspace.ClaimInspectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Status}" Value="IN_PROGRESS">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="COMPLETED">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Complete inspection" Padding="12,7"
+                                Command="{Binding DataContext.EmployeeWorkspace.CompleteInspectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Status}" Value="IN_PROGRESS">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Margin="0,12,0,0">
+                    <Button IsEnabled="{Binding CanCheckIn}" Content="Check in" ToolTip="Available for scheduled visits." ToolTipService.ShowOnDisabled="True" Padding="10,6" Margin="0,0,8,0"
+                            Command="{Binding DataContext.EmployeeWorkspace.CheckInCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="access"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></Button.Style>
+                    </Button>
+                    <Button IsEnabled="{Binding CanCheckOut}" Content="Check out" ToolTip="Available after check-in." ToolTipService.ShowOnDisabled="True" Padding="10,6" Margin="0,0,8,0"
+                            Command="{Binding DataContext.EmployeeWorkspace.CheckOutCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="access"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></Button.Style>
+                    </Button>
+                    <DatePicker Width="160" Margin="0,0,8,0" AutomationProperties.Name="Actual return date"
+                             SelectedDate="{Binding DataContext.EmployeeWorkspace.ActualReturnDate, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                        <DatePicker.Style>
+                            <Style TargetType="DatePicker" BasedOn="{StaticResource {x:Type DatePicker}}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="task"/>
+                                            <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                            <Condition Binding="{Binding CanConfirmReturn}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DatePicker.Style>
+                    </DatePicker>
+                    <Button Content="Assign available unit" ToolTip="Requires a checked-in reservation visit and an available unit of the requested type at your facility." Padding="10,6" Margin="0,0,8,0" Command="{Binding DataContext.EmployeeWorkspace.AssignHandoverUnitCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="reservations"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger></Style.Triggers></Style></Button.Style>
+                    </Button>
+                    <Button IsEnabled="{Binding CanCompleteHandover}" Content="Complete handover" ToolTip="Uses the unit assigned by your facility manager." Padding="10,6" Margin="0,0,8,0" Command="{Binding DataContext.EmployeeWorkspace.CompleteHandoverCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="task"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/><Condition Binding="{Binding WorkType}" Value="RESERVATION_VISIT"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger></Style.Triggers></Style></Button.Style>
+                    </Button>
+                    <Button IsEnabled="{Binding CanConfirmReturn}" Content="Confirm return" Padding="10,6" Margin="0,0,8,0" Command="{Binding DataContext.EmployeeWorkspace.ConfirmReturnCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="task"/><Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/><Condition Binding="{Binding WorkType}" Value="RETURN_VISIT"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible"/></MultiDataTrigger></Style.Triggers></Style></Button.Style>
+                    </Button>
+                    <TextBox Width="220" Height="32" Padding="6" Margin="0,0,8,0"
+                             Text="{Binding DataContext.EmployeeWorkspace.ActionNote, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.Style><Style TargetType="TextBox" BasedOn="{StaticResource AppTextBoxStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="support"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></TextBox.Style>
+                    </TextBox>
+                    <Button Content="Complete ticket" Padding="10,6" Margin="0,0,8,0"
+                            Command="{Binding DataContext.EmployeeWorkspace.CompleteTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="support"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsStaff, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></Button.Style>
+                    </Button>
+                    <ComboBox Width="220" Height="32" Margin="0,0,8,0" ToolTip="Select Facility Staff" ItemsSource="{Binding DataContext.EmployeeWorkspace.FacilityStaff, RelativeSource={RelativeSource AncestorType=Window}}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding DataContext.EmployeeWorkspace.SelectedStaffId, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+                        <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource AppComboBoxStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="support"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></ComboBox.Style>
+                    </ComboBox>
+                    <Button Content="Assign ticket" Padding="10,6" Margin="0,0,8,0"
+                            Command="{Binding DataContext.EmployeeWorkspace.AssignTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="support"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></Button.Style>
+                    </Button>
+                    <ComboBox Width="145" Height="32" Margin="0,0,8,0"
+                              ItemsSource="{Binding DataContext.EmployeeWorkspace.StorageStatuses, RelativeSource={RelativeSource AncestorType=Window}}"
+                              SelectedItem="{Binding DataContext.EmployeeWorkspace.StorageStatus, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource AppComboBoxStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="storage"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></ComboBox.Style>
+                    </ComboBox>
+                    <Button Content="Update status" Padding="10,6"
+                            Command="{Binding DataContext.EmployeeWorkspace.ChangeStorageStatusCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding}">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.Route, RelativeSource={RelativeSource AncestorType=Window}}" Value="storage"/>
+                                        <Condition Binding="{Binding DataContext.EmployeeWorkspace.IsManager, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style></Button.Style>
+                    </Button>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+</ResourceDictionary>

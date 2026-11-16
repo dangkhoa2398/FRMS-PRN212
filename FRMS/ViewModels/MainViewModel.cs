@@ -179,7 +179,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task FindStorageAsync()
     {
-        if (!IsAuthenticated || !CurrentPage.IsStorage) return;
+        if (!IsAuthenticated || !CurrentPage.IsStorage || CurrentPage.IsLoading) return;
         var page = CurrentPage;
         if (page.StartMonth.HasValue != page.EndMonth.HasValue)
         {
@@ -218,6 +218,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (facility is null || !Guid.TryParse(facility.FacilityId, out _)) return;
         var page = CurrentPage;
+        if (!page.IsStorage || page.IsLoading) return;
         page.ReservationFacilityId = facility.FacilityId;
         page.ReservationFacilityName = string.IsNullOrWhiteSpace(facility.FacilityName) ? facility.Title : facility.FacilityName;
         page.SelectedUnitTypeId = "";
@@ -407,6 +408,10 @@ public sealed class MainViewModel : ObservableObject
         {
             path = "api/v1/facilities/" + storageQuery;
             page.HasSearched = true;
+            page.ReservationFacilityId = "";
+            page.ReservationFacilityName = "";
+            page.SelectedUnitTypeId = "";
+            page.UnitTypes.Clear();
             page.Search = "";
             page.SetRecords(Array.Empty<CustomerRecord>());
         }
@@ -470,7 +475,7 @@ public sealed class MainViewModel : ObservableObject
                 records = await ExpandStorageTypesAsync(records, page, cts.Token);
             if (route == "reservations" || route == "invoices")
                 await EnrichStorageAsync(records, route, cts.Token);
-            if (route == "reservations")
+            if (route is "reservations" or "contracts" or "access")
                 await EnrichFacilityNamesAsync(records, cts.Token);
             if (route == "support")
                 await LoadTicketContractsAsync(page, cts.Token);
@@ -547,6 +552,10 @@ public sealed class MainViewModel : ObservableObject
             if (!string.IsNullOrEmpty(facilityId)) facility = "Facility " + ShortId(facilityId);
         }
         string unitCode = Field(element, "unitCode", "storageUnitCode");
+        var storageUnit = Property(element, "storageUnit");
+        if (string.IsNullOrWhiteSpace(unitCode)) unitCode = Field(storageUnit, "unitCode");
+        var contractUnitType = Field(element, "unitTypeName", "unitTypeMode");
+        if (string.IsNullOrWhiteSpace(contractUnitType)) contractUnitType = Field(storageUnit, "unitTypeName", "unitTypeMode");
         string contractId = Field(element, "contractId");
         string status = Field(element, "status", "paymentStatus");
         return route switch
@@ -576,10 +585,10 @@ public sealed class MainViewModel : ObservableObject
                 Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
                 Subtitle = "Contract: " + ShortId(contractId),
                 Status = status,
-                Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
-                Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
+                FacilityId = Field(element, "facilityId"),
+                FacilityName = Field(element, "facilityName"),
+                Detail2 = "Storage type: " + contractUnitType,
                 Detail3 = "Rental period: " + DateLabel(Field(element, "startMonth")) + " – " + DateLabel(Field(element, "endMonth")),
-                Detail4 = "Contract ID: " + contractId,
                 ContractId = contractId
             },
             "contracts" => new CustomerRecord
@@ -587,8 +596,9 @@ public sealed class MainViewModel : ObservableObject
                 Title = string.IsNullOrWhiteSpace(unitCode) ? "Rental contract" : "Unit " + unitCode,
                 Subtitle = "Contract: " + ShortId(contractId),
                 Status = status,
-                Detail1 = "Storage ID: " + ShortId(Field(element, "storageUnitId")),
-                Detail2 = "Storage type: " + Field(element, "unitTypeName", "unitTypeMode"),
+                FacilityId = Field(element, "facilityId"),
+                FacilityName = Field(element, "facilityName"),
+                Detail2 = "Storage type: " + contractUnitType,
                 Detail3 = "Start: " + DateLabel(Field(element, "startMonth")),
                 Detail4 = "End: " + DateLabel(Field(element, "endMonth")),
                 ContractId = contractId
@@ -851,7 +861,7 @@ public sealed class MainViewModel : ObservableObject
                 catch (JsonException) { name = ""; }
                 names[record.FacilityId] = name;
             }
-            record.FacilityName = string.IsNullOrWhiteSpace(name) ? "Facility " + ShortId(record.FacilityId) : name;
+            record.FacilityName = string.IsNullOrWhiteSpace(name) ? "Facility name unavailable" : name;
         }
     }
 

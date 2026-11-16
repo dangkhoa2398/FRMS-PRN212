@@ -5,22 +5,13 @@
         <Style x:Key="Panel" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
             <Setter Property="Margin" Value="0,0,0,16"/>
         </Style>
-        <Style x:Key="Heading" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="18"/>
-        </Style>
+        <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource SectionHeadingStyle}"/>
         <Style x:Key="Subtle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource AppButtonStyle}"/>
-        <Style x:Key="StatusTag" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource StatusBackgroundBrush}"/>
-            <Setter Property="Padding" Value="11,6"/>
-            <Setter Property="CornerRadius" Value="13"/>
-            <Setter Property="VerticalAlignment" Value="Top"/>
-        </Style>
+        <Style x:Key="StatusTag" TargetType="Border" BasedOn="{StaticResource StatusBadgeStyle}"/>
         <DataTemplate x:Key="SimpleCard">
             <Border Style="{StaticResource Panel}">
                 <StackPanel>
@@ -39,7 +30,7 @@
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,3"/>
                     <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,3"/>
-                    <Button Content="Select this storage type" HorizontalAlignment="Left" Margin="0,12,0,0"
+                    <Button Content="Reserve this type" Click="ShowReservationReview" HorizontalAlignment="Left" Margin="0,12,0,0"
                             Command="{Binding DataContext.SelectFacilityCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{Binding}">
                         <Button.Style>
@@ -71,7 +62,7 @@
                     </Grid>
                     <Separator Margin="0,15"/>
                     <UniformGrid Columns="2">
-                        <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
+                        <TextBlock Text="{Binding FacilityName}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
                         <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
                         <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
                         <TextBlock Text="{Binding Detail4}" Style="{StaticResource Subtle}" Margin="0,5,12,5"/>
@@ -145,7 +136,11 @@
                 <StackPanel>
                     <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
-                    <TextBlock Text="{Binding Detail1}" Style="{StaticResource Subtle}" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding FacilityName}" Style="{StaticResource Subtle}" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding Detail3}" Style="{StaticResource Subtle}" Margin="0,4,0,0"/>
+                    <Border Style="{StaticResource StatusTag}" HorizontalAlignment="Left" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource StatusForegroundBrush}"/>
+                    </Border>
                     <TextBlock Text="{Binding Detail2}" Style="{StaticResource Subtle}" Margin="0,4,0,0"/>
                     <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                         <DatePicker SelectedDate="{Binding VisitDate, Mode=TwoWay}" Width="170" Height="34"/>
@@ -195,15 +190,15 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <Grid Margin="0,0,0,18">
+        <DockPanel Margin="0,0,0,18">
+            <Button DockPanel.Dock="Right" Content="Refresh" VerticalAlignment="Center" Margin="16,0,0,0"
+                    Style="{StaticResource GhostButtonStyle}"
+                    Command="{Binding DataContext.RefreshCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <StackPanel>
                 <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="28" Foreground="{DynamicResource TextPrimaryBrush}"/>
                 <TextBlock Text="{Binding Description}" Style="{StaticResource Subtle}" Margin="0,6,0,0"/>
             </StackPanel>
-            <Button Content="Refresh" HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Style="{StaticResource PrimaryButton}"
-                    Command="{Binding DataContext.RefreshCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-        </Grid>
+        </DockPanel>
         <StackPanel Grid.Row="1" Margin="0,0,0,12">
             <ProgressBar Height="3" IsIndeterminate="True">
                 <ProgressBar.Style><Style TargetType="ProgressBar">
@@ -226,11 +221,17 @@
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
-                            <TextBlock Text="Customer Information" Style="{StaticResource Heading}" Margin="0,0,0,12"/>
+                            <TextBlock Text="Your account" Style="{StaticResource Heading}" Margin="0,0,0,12"/>
                             <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
+                            <WrapPanel>
+                                <Button Content="Find storage" CommandParameter="storage" Margin="0,0,8,8" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <Button Content="My contracts" CommandParameter="contracts" Margin="0,0,8,8" Style="{StaticResource GhostButtonStyle}" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <Button Content="Invoices" CommandParameter="invoices" Margin="0,0,8,8" Style="{StaticResource GhostButtonStyle}" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <Button Content="Access visits" CommandParameter="access" Margin="0,0,8,8" Style="{StaticResource GhostButtonStyle}" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            </WrapPanel>
                         </StackPanel>
                     </Border>
-</StackPanel>
+                </StackPanel>
 
                 <StackPanel>
                     <StackPanel.Style><Style TargetType="StackPanel">
@@ -243,35 +244,34 @@
                         <StackPanel>
                             <TextBlock Text="Find available storage" Style="{StaticResource Heading}"/>
                             <TextBlock Text="Choose a facility, then filter its available storage types by size, privacy and rental period." Style="{StaticResource Subtle}" Margin="0,8,0,16"/>
-                            <UniformGrid Columns="3">
-                                <StackPanel Margin="0,0,14,14">
+                            <WrapPanel>
+                                <StackPanel Width="180" Margin="0,0,12,12">
                                     <TextBlock Text="Facility (required)" Style="{StaticResource Subtle}"/>
                                     <ComboBox ItemsSource="{Binding FacilityOptions}" DisplayMemberPath="DisplayName" SelectedValuePath="FacilityId" SelectedValue="{Binding SelectedFacilityId, Mode=TwoWay}" Height="38" Margin="0,7,0,0" ToolTip="Select a facility before searching storage types"/>
                                 </StackPanel>
-                                <StackPanel Margin="0,0,14,14">
-                                    <TextBlock Text="Storage Type" Style="{StaticResource Subtle}"/>
+                                <StackPanel Width="180" Margin="0,0,12,12">
+                                    <TextBlock Text="Privacy" Style="{StaticResource Subtle}"/>
                                     <ComboBox ItemsSource="{Binding StorageModes}" SelectedItem="{Binding StorageMode}"
                                               Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
-                                <StackPanel Margin="0,0,14,14">
-                                    <TextBlock Text="Storage Size (Small / Medium / Large)" Style="{StaticResource Subtle}"/>
+                                <StackPanel Width="180" Margin="0,0,12,12">
+                                    <TextBlock Text="Size" Style="{StaticResource Subtle}"/>
                                     <ComboBox ItemsSource="{Binding StorageSizes}" SelectedItem="{Binding StorageSize, Mode=TwoWay}"
                                               Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
-                                <StackPanel Margin="0,0,14,14">
+                                <StackPanel Width="180" Margin="0,0,12,12">
                                     <TextBlock Text="Check-in Month" Style="{StaticResource Subtle}"/>
                                     <DatePicker SelectedDate="{Binding StartMonth, Mode=TwoWay}" Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
-                                <StackPanel Margin="0,0,14,14">
+                                <StackPanel Width="180" Margin="0,0,12,12">
                                     <TextBlock Text="Check-out Month" Style="{StaticResource Subtle}"/>
                                     <DatePicker SelectedDate="{Binding EndMonth, Mode=TwoWay}" Height="38" Margin="0,7,0,0"/>
                                 </StackPanel>
-                                <StackPanel Margin="0,0,14,14" VerticalAlignment="Bottom">
-                                    <TextBlock Text=" " Style="{StaticResource Subtle}"/>
+                                <StackPanel Width="180" Margin="0,0,12,12" VerticalAlignment="Bottom">
                                     <Button Content="Find Storage" Style="{StaticResource PrimaryButton}" Height="38" Margin="0,7,0,0"
                                             Command="{Binding DataContext.FindStorageCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 </StackPanel>
-                            </UniformGrid>
+                            </WrapPanel>
 
                         </StackPanel>
                     </Border>
@@ -285,14 +285,20 @@
                         <TextBlock Text="Available Storage Types" Style="{StaticResource Heading}" Margin="0,6,0,12"/>
                         <ItemsControl ItemsSource="{Binding VisibleRecords}" ItemTemplate="{StaticResource SimpleCard}"/>
                     </StackPanel>
-                    <Border Style="{StaticResource Panel}" Margin="0,14,0,14">
+                    <Border x:Name="ReservationReview" Margin="0,14,0,14">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Panel}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasReservationSelection}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <StackPanel>
-                            <TextBlock Text="Create Reservation" Style="{StaticResource Heading}"/>
-                            <TextBlock Text="Select a storage type above. Facility and type will be filled in automatically."
-                                       Style="{StaticResource Subtle}" Margin="0,6,0,12"/>
-                            <TextBlock Text="{Binding ReservationFacilityName}" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" Margin="0,0,0,10"/>
-                            <TextBlock Text="Selected Facility" Style="{StaticResource Subtle}"/>
-                             <TextBox Text="{Binding ReservationFacilityName}" IsReadOnly="True" Height="36" Padding="8" Margin="0,5,0,12"/>
+                            <TextBlock Text="Review reservation" Style="{StaticResource Heading}"/>
+                            <TextBlock Text="{Binding ReservationFacilityName}" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" Margin="0,6,0,12"/>
                             <UniformGrid Columns="2">
                                 <StackPanel Margin="0,0,12,10">
                                     <TextBlock Text="Available Unit Type" Style="{StaticResource Subtle}"/>
@@ -300,15 +306,16 @@
                                               SelectedValue="{Binding SelectedUnitTypeId, Mode=TwoWay}" Height="36"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,12,10">
-                                    <TextBlock Text="Start month (yyyy-MM)" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding ReservationStartMonth, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                    <TextBlock Text="Start month" Style="{StaticResource Subtle}"/>
+                                    <TextBlock Text="{Binding ReservationStartMonth}" FontWeight="SemiBold" Margin="0,5,0,0"/>
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,10">
-                                    <TextBlock Text="End month (yyyy-MM)" Style="{StaticResource Subtle}"/>
-                                    <TextBox Text="{Binding ReservationEndMonth, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8"/>
+                                    <TextBlock Text="End month" Style="{StaticResource Subtle}"/>
+                                    <TextBlock Text="{Binding ReservationEndMonth}" FontWeight="SemiBold" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </UniformGrid>
-                            <Button Content="Submit Reservation" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
+                            <TextBlock Text="To change the rental months, update the search and select a storage type again." Style="{StaticResource Subtle}" Margin="0,0,0,12"/>
+                            <Button Content="Confirm reservation" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
                                     Command="{Binding DataContext.CreateReservationCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                         </StackPanel>
                     </Border>
@@ -326,31 +333,30 @@
                         </Style.Triggers>
                     </Style></StackPanel.Style>
                     <Border Style="{StaticResource Panel}">
-                        <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="230"/></Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                            <StackPanel><TextBlock Text="Filter by Status" Style="{StaticResource Subtle}" Margin="0,0,0,5"/><ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="190" Height="38"/></StackPanel>
-<StackPanel Margin="12,0,0,0">
-                                <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsReservations}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-                                <TextBlock Text="Filter by Storage Type" Style="{StaticResource Subtle}" Margin="0,0,0,5"/>
-                                <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="200" ToolTip="Filter by Storage Type"
-                                          Height="38" Margin="0,0,0,0">
-                                    <ComboBox.Style>
-                                        <Style TargetType="ComboBox" BasedOn="{StaticResource AppComboBoxStyle}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsReservations}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ComboBox.Style>
-                                </ComboBox>
+                        <WrapPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <TextBlock Text="Status" Style="{StaticResource Subtle}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}" Width="160"/>
                             </StackPanel>
+                            <StackPanel Margin="0,0,12,8">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsReservations}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Storage type" Style="{StaticResource Subtle}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding UnitTypeOptions}" SelectedItem="{Binding UnitTypeFilter}" Width="180"/>
                             </StackPanel>
-                            <TextBox Grid.Column="1" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by unit, facility, type or status"
-                                     Height="38" Padding="10,8"/>
-                        </Grid>
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="Search" Style="{StaticResource Subtle}" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Width="200" MinHeight="36"/>
+                            </StackPanel>
+                        </WrapPanel>
                     </Border>
 
                     <Border>
@@ -369,7 +375,7 @@
                             <TextBlock Text="Category" Style="{StaticResource Subtle}"/>
                             <ComboBox ItemsSource="{Binding TicketCategories}" SelectedItem="{Binding TicketCategory}" Height="36" Margin="0,6,0,12"/>
                             <TextBlock Text="Description (max 1000 characters)" Style="{StaticResource Subtle}"/>
-                            <TextBox Text="{Binding TicketDescription, UpdateSourceTrigger=PropertyChanged}" Height="85" Padding="8"
+                            <TextBox Text="{Binding TicketDescription, UpdateSourceTrigger=PropertyChanged}" Height="85" MaxLength="1000" Padding="8"
                                      AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,6,0,12"/>
                             <Button Content="Submit Ticket" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
                                     Command="{Binding DataContext.CreateSupportTicketCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
